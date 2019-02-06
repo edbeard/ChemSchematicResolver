@@ -1,0 +1,5 @@
+**/.idea/
+/tests/.cache/
+/tests/train*
+/training/
+**/output/
