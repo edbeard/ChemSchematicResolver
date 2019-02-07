@@ -26,9 +26,10 @@ import csv
 # Paths used in training:
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
-raw_train_data = os.path.join(os.path.dirname(tests_dir), 'examples', 'train_imgs')
-seg_train_dir = os.path.join(tests_dir, 'train_osra_small')
-seg_train_csv = os.path.join(tests_dir, 'train_osra.csv')
+train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
+raw_train_data = os.path.join(os.path.dirname(train_dir), 'train_imgs')
+seg_train_dir = os.path.join(train_dir, 'train_osra_small')
+seg_train_csv = os.path.join(train_dir, 'train_osra.csv')
 
 
 def split_raw_train_data():

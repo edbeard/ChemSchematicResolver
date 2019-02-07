@@ -28,7 +28,8 @@ import matplotlib.patches as mpatches
 
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
-markush_dir = os.path.join(os.path.dirname(tests_dir), 'tests', 'train_markush_small')
+train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
+markush_dir = os.path.join(train_dir, 'train_markush_small')
 sample_diag = os.path.join(markush_dir, 'S014372081630119X_gr1.jpg')
 
 class TestActions(unittest.TestCase):
@@ -53,12 +54,13 @@ class TestActions(unittest.TestCase):
 
         #bin_fig = csde.actions.binarize(bin_fig) # Might not need binary version?
         #bin_fig.img = img_as_float(bin_fig.img)
-        tag_img, panels = csde.actions.segment(bin_fig)
+        panels = csde.actions.segment(bin_fig)
 
         # Create debugging image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
-        #
+        #train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
+
         diags, labels = csde.actions.classify(panels)
         #
         for panel in diags:

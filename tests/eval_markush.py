@@ -18,7 +18,8 @@ from chemschematicdiagramextractor.ocr import LABEL_WHITELIST
 
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
-raw_train_data = os.path.join(tests_dir, 'train_markush_small')
+train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
+raw_train_data = os.path.join(train_dir, 'train_markush_small')
 
 
 class TestMarkush(unittest.TestCase):

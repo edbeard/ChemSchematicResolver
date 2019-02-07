@@ -69,9 +69,9 @@ def binarize(fig, threshold=0.85):
 
 def binary_close(fig, size=16, ratio=2):
     """ Joins unconnected pixel by dilation and erosion"""
-    #selem = disk(size)
-    width = size*ratio
-    selem = rectangle(width, size)
+    selem = disk(size)
+    # width = size*ratio
+    # selem = rectangle(width, size)
 
     fig.img = pad(fig.img, size, mode='constant')
     fig.img = binary_closing(fig.img, selem)

@@ -25,7 +25,7 @@ class TestValidation(unittest.TestCase):
     #     # 16 black, 48 white
     #     img = np.ones((4, 4))
     #     img = np.pad(img, 2, 'constant')
-
+    #
     #     ratio = csde.validate.get_pixel_ratio(img)
     #     self.assertEqual(ratio, 0.25)
 

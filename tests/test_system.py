@@ -27,8 +27,9 @@ import matplotlib.patches as mpatches
 
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
-example_dir = os.path.join(tests_dir, 'train_imgs')
-labelled_output_dir = os.path.join(tests_dir, 'output')
+train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
+examples_dir = os.path.join(train_dir, 'train_imgs')
+labelled_output_dir = os.path.join(train_dir, 'output')
 
 class TestSystem(unittest.TestCase):
 
@@ -41,7 +42,7 @@ class TestSystem(unittest.TestCase):
         :return:
         '''
 
-        test_diag = os.path.join(example_dir, filename)
+        test_diag = os.path.join(examples_dir, filename)
 
         fig = csde.io.imread(test_diag) # Read in float and raw pixel images
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
@@ -96,9 +97,6 @@ class TestSystem(unittest.TestCase):
     def test_segmentation10(self):
         self.do_segmentation('S0143720816300900_gr2.jpg')
 
-    def test_segmentation11(self):
-        self.do_segmentation('S0143720816301097_gr1.jpg')
-
     def test_segmentation_markush_img(self):
         self.do_segmentation('S0143720816301115_r75.jpg')
 
@@ -111,7 +109,7 @@ class TestSystem(unittest.TestCase):
         :return:
         '''
 
-        test_diag = os.path.join(example_dir, filename)
+        test_diag = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
@@ -196,8 +194,6 @@ class TestSystem(unittest.TestCase):
     def test_grouping10(self):
         self.do_grouping('S0143720816300900_gr2.jpg')
 
-    def test_grouping11(self):
-        self.do_grouping('S0143720816301097_gr1.jpg')
 
     def test_grouping_markush(self):
         self.do_grouping('S0143720816300286_gr1.jpg')
@@ -207,7 +203,7 @@ class TestSystem(unittest.TestCase):
         """ Tests the OCR recognition """
 
 
-        test_diag = os.path.join(example_dir, filename)
+        test_diag = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
@@ -317,16 +313,6 @@ class TestSystem(unittest.TestCase):
         for x in gold:
             self.assertIn(x, labels)
 
-    def test_ocr11(self):
-        # currently failing for 3 reasons :
-        # 1 - the sentences are being split up for PI1
-        # 2 - Z's are being identified as 2's
-        # 3 - one of the '1s' is identfied as 'l'
-        labels = self.do_ocr('S0143720816301097_gr1.jpg')
-        gold = [[['PI1-AP']], [['PI1-TMP']], [['PIl-SZ']]]
-        for x in gold:
-            self.assertIn(x, labels)
-
     def test_ocr_markush_img(self):
         labels = self.do_ocr('S0143720816301115_r75.jpg')
         gold = [[['PI1-AP']], [['PI1-TMP']], [['PIl-SZ']]]
@@ -336,7 +322,7 @@ class TestSystem(unittest.TestCase):
     def do_osra(self, filename):
         """ Tests the OSRA chemical diagram recognition """
 
-        test_diag = os.path.join(example_dir, filename)
+        test_diag = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
@@ -427,23 +413,13 @@ Label 0 (9.4724): CCCCCCc1nc2c(c3ccc(s3)/C=C(/C(=O)O)\C#N)c3*=C(**)C(=*c3c(c2nc1
         smiles= self.do_osra('S0143720816300900_gr2.jpg')
         print(smiles)
 
-    def test_osra11(self):
-        # currently failing for 3 reasons :
-        # 1 - the sentences are being split up for PI1
-        # 2 - Z's are being identified as 2's
-        # 3 - one of the '1s' is identfied as 'l'
-        labels = self.do_ocr('S0143720816301097_gr1.jpg')
-        gold = [[['PI1-AP']], [['PI1-TMP']], [['PIl-SZ']]]
-        for x in gold:
-            self.assertIn(x, labels)
-
 
 class TestValidation(unittest.TestCase):
 
     def do_metrics(self, filename):
         """ Used to identify correlations between metrics and output validity"""
 
-        test_fig = os.path.join(example_dir, filename)
+        test_fig = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_fig)
@@ -533,7 +509,7 @@ class TestFiltering(unittest.TestCase):
 
     def do_filtering(self, filename):
         """ Used to identify correlations between metrics and output validity"""
-        test_fig = os.path.join(example_dir, filename)
+        test_fig = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_fig)

@@ -17,7 +17,6 @@ log = logging.getLogger(__name__)
 
 import chemschematicdiagramextractor.model as mod
 import unittest
-import numpy as np
 
 class TestModel(unittest.TestCase):
 
@@ -37,11 +36,3 @@ class TestModel(unittest.TestCase):
         r1 = mod.Rect(-1, 1, -1, 1)
         r2 = mod.Rect(2, 4, 3, 5)
         self.assertEqual(r1.separation(r2), 5.)
-
-    def test_get_pixel_ratio(self):
-        # 16 black, 48 white
-        img = np.ones((4, 4))
-        img = np.pad(img, 2, 'constant')
-
-        ratio = mod.pixel_ratio(img)
-        self.assertEqual(ratio, 0.25)
