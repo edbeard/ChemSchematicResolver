@@ -126,6 +126,16 @@ class Rect(object):
     def __str__(self):
         return '<%s (%s, %s, %s, %s)>' % (self.__class__.__name__, self.left, self.right, self.top, self.bottom)
 
+    def __eq__(self, other):
+        if self.left == other.left and self.right == other.right \
+                and self.top == other.top and self.bottom == other.bottom:
+            return True
+        else:
+            return False
+
+    def __hash__(self):
+        return hash((self.left, self.right, self.top, self.bottom))
+
 class Panel(Rect):
     """ Tagged section inside Figure"""
 
@@ -252,7 +262,7 @@ class Graph:
             parent[yroot] = xroot
             rank[xroot] += 1
 
-    # Main function, constructs minimum spanning tre by kruskals algorithm
+    # Main function, constructs minimum spanning tree by kruskals algorithm
     def kruskal(self):
 
         result = []

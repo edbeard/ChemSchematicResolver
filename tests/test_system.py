@@ -29,12 +29,13 @@ import matplotlib.patches as mpatches
 tests_dir = os.path.dirname(os.path.abspath(__file__))
 train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
 examples_dir = os.path.join(train_dir, 'train_imgs')
+markush_dir = os.path.join(train_dir, 'train_markush_small')
 labelled_output_dir = os.path.join(train_dir, 'output')
 
 class TestSystem(unittest.TestCase):
 
     # Testing sementation is sucessful
-    def do_segmentation(self, filename):
+    def do_segmentation(self, filename, filedir=examples_dir):
         '''
         Tests bounding box assignment for filename
 
@@ -42,7 +43,7 @@ class TestSystem(unittest.TestCase):
         :return:
         '''
 
-        test_diag = os.path.join(examples_dir, filename)
+        test_diag = os.path.join(filedir, filename)
 
         fig = csde.io.imread(test_diag) # Read in float and raw pixel images
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
@@ -65,6 +66,13 @@ class TestSystem(unittest.TestCase):
 
         ax.set_axis_off()
         plt.show()
+
+
+    def test_segmentation_all(self):
+
+        test_imgs = os.listdir(markush_dir)
+        for img_path in test_imgs:
+            self.do_segmentation(img_path, filedir=markush_dir)
 
     def test_segmentation1(self):
         self.do_segmentation('S014372081630119X_gr1.jpg')
@@ -100,8 +108,16 @@ class TestSystem(unittest.TestCase):
     def test_segmentation_markush_img(self):
         self.do_segmentation('S0143720816301115_r75.jpg')
 
+
+    def do_grouping_by_ocr(self):
+        '''
+        Attempts to identify labels using the ocr module
+        :return:
+        '''
+        pass
+
             # Testing grouping of diagram - label pairs is correct
-    def do_grouping(self, filename):
+    def do_grouping(self, filename, filedir=examples_dir):
         '''
         Tests bounding box assignment for filename
 
@@ -109,7 +125,7 @@ class TestSystem(unittest.TestCase):
         :return:
         '''
 
-        test_diag = os.path.join(examples_dir, filename)
+        test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
@@ -163,6 +179,13 @@ class TestSystem(unittest.TestCase):
         # labelled_diags = csde.actions.label_diags(diags, labels)
         # tagged_diags = csde.actions.read_all_labels(fig, labelled_diags)
         # tagged_resolved_diags = csde.actions.read_all_diags(raw_fig, tagged_diags)
+
+    def test_grouping_all(self):
+
+        test_imgs = os.listdir(markush_dir)
+        for img_path in test_imgs:
+            self.do_grouping(img_path, filedir=markush_dir)
+
 
     def test_grouping1(self):
         self.do_grouping('S014372081630119X_gr1.jpg')

@@ -106,3 +106,26 @@ class TestActions(unittest.TestCase):
         self.assertEqual(merged_r.right, 15)
         self.assertEqual(merged_r.top, 0)
         self.assertEqual(merged_r.bottom, 20)
+
+    def test_horizontal_merging(self):
+        ''' Tests the horizontal merging is behaving'''
+
+        test_markush = os.path.join(markush_dir, 'S0143720816300286_gr1.jpg')
+        fig = csde.io.imread(test_markush)
+        raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
+
+        panels = csde.actions.segment(raw_fig)
+        print('Segmented panel number : %s ' % len(panels))
+
+        # Crete output image (post-merging)
+        merged_panels = csde.actions.merge_label_horizontally_repeats(panels)
+
+        out_fig2, ax2 = plt.subplots(figsize=(10, 6))
+        ax2.imshow(fig.img)
+
+        for panel in merged_panels:
+            diag_rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
+                                           fill=False, edgecolor='r', linewidth=2)
+            ax2.add_patch(diag_rect)
+
+        plt.show()

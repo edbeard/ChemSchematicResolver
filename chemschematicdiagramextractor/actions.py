@@ -144,9 +144,9 @@ def segment(fig):
 
     closed_fig = binary_close(bin_fig)
 
-    out_fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(closed_fig.img)
-    plt.show()
+    # out_fig, ax = plt.subplots(figsize=(10, 6))
+    # ax.imshow(closed_fig.img)
+    # plt.show()
 
     fill_img = binary_floodfill(closed_fig)
     tag_img, no_tagged = binary_tag(fill_img)
@@ -158,7 +158,7 @@ def preprocessing(panels, fig):
 
     # Pre-processing filtering
     panels = get_repeating_unit(panels, fig)
-    panels = merge_labels_horizontally(panels)
+   # panels = merge_labels_horizontally(panels)
     panels = merge_labels_vertically(panels)
     return panels
 
@@ -197,7 +197,7 @@ def get_threshold(panels):
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
     areas = [panel.area for panel in panels]
-    return 0.6*np.mean(areas) # Threshold for classification
+    return 0.95*np.mean(areas) # Threshold for classification
 
 def classify_kruskal(panels):
     """ Classifies diagrams and labels for panels using Kruskals algorithm
@@ -255,42 +255,78 @@ def label_kruskal(diags, labels):
     return diags
 
 
-def merge_labels_horizontally(panels):
-    """ Identifies labels to merge from vertical proximity and length"""
+def order_by_area(panels):
+    ''' Returns a list of panel objects, ordered by area'''
+
+    def get_area(panel):
+        return panel.area
+
+    panels.sort(key=get_area)
+    return panels
+
+def find_next_merge_candidate(thresh, ordered_panels):
+    '''
+    Iterates through all candidate panels, merging when criteria is matched
+    :param thresh: Used to determine that a panel constitutes a label
+    :param ordered_panels: an ordered list of all panels in the image
+    :return:
+    '''
+    for a, b in list(set(itertools.combinations(ordered_panels, 2))):
+
+        # Check panels lie in roughly the same line, that they are of label size and similar height
+        if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
+                and abs(a.height - b.height) < a.height \
+                and a.area < thresh and b.area < thresh:
+
+            # Check that the distance between the edges of panels is not too large
+            if (a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width) or (
+                    a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width):
+                merged_rect = merge_rect(a, b)
+                if a in ordered_panels: ordered_panels.remove(a)
+                if b in ordered_panels: ordered_panels.remove(b)
+                ordered_panels.append(merged_rect)  # NB : merged rectangles will be the last to be compared
+
+                ordered_panels = find_next_merge_candidate(thresh, ordered_panels)
+
+    return ordered_panels
+
+
+def is_unque_panel(a, b):
+    ''' Checks whether a panel is unique'''
+
+    if a.left == b.left and a.right == b.right \
+            and a.top == b.top and a.bottom == b.bottom:
+        return True
+    else:
+        return False
+
+
+def merge_loop(panels, thresh):
+    ''' Goes through the loop for merging.'''
 
     output_panels = []
     blacklisted_panels = []
+    done = True
 
-    thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
-
-    # Merging labels that are in close proximity vertically
     for a, b in itertools.combinations(panels, 2):
-        # Check that center of label is approximately 1.5*width of this box from the center of this box
-        # Check that height of labels are about the same
-        # Check that width of the boxes are comparable
-        # Check whitespace ratio? We do have the original figure (unbinarized etc) here now...
 
-        # if abs(a.center[0] - b.center[0]) < 1.5*a.width and abs(a.center[1] - b.center[1]) < 2*a.height \
-        #         and abs(a.height - b.height) < 0.2*a.height and abs(a.width - b.width) < 2*a.width \
-        #         and a.area < thresh and b.area < thresh:
+        # Check panels lie in roughly the same line, that they are of label size and similar height
+        if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
+                and abs(a.height - b.height) < a.height \
+                and a.area < thresh and b.area < thresh:
 
-        if abs(a.center[1] - b.center[1]) < 0.5 * a.height: # Check labels are of similar height
+            # Check that the distance between the edges of panels is not too large
+            if (a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width) or (
+                    a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width):
 
-            if a.center[0] > b.center[0]: # Check which box is of greater x
-                if (a.left - b.right < a.width) or (a.left - b.right < b.width):
+                merged_rect = merge_rect(a, b)
+                merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
+                output_panels.append(merged_panel)
+                blacklisted_panels.extend([a, b])
+                done = False
 
-                    merged_rect = merge_rect(a, b)
-                    merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-                    output_panels.append(merged_panel)
-                    blacklisted_panels.extend([a, b])
-
-            else:
-                if (b.left - a.right < a.width) or (b.left - a.right < b.width):
-
-                    merged_rect = merge_rect(a, b)
-                    merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-                    output_panels.append(merged_panel)
-                    blacklisted_panels.extend([a, b])
+    print('Length of blacklisted : %s' % len(blacklisted_panels))
+    print('Length of output panels : %s' % len(output_panels))
 
     for panel in panels:
         if panel not in blacklisted_panels:
@@ -298,9 +334,153 @@ def merge_labels_horizontally(panels):
 
     output_panels = relabel_panels(output_panels)
 
-    print(output_panels)
+    return output_panels, done
+
+def merge_overlap(a, b):
+    """ Checks whether panels a and b overlap. If they do, returns new merged panel"""
+
+    if a.overlaps(b) or b.overlaps(a):
+        return merge_rect(a, b)
+
+def get_one_to_merge(all_combos, panels):
+    ''' Returns the updated panel list once a panel needs to be merged'''
+
+    for a, b in all_combos:
+
+        overlap_panel = merge_overlap(a, b)
+        if overlap_panel is not None:
+            merged_panel = Panel(overlap_panel.left, overlap_panel.right, overlap_panel.top, overlap_panel.bottom, 0)
+            panels.remove(a)
+            panels.remove(b)
+            panels.append(merged_panel)
+            return panels, False
+
+    return panels, True
+
+
+
+def merge_all_overlaps(panels):
+    """ Merges all overlapping rectangles together"""
+
+    all_merged = False
+    thresh = get_threshold(panels)
+
+    # Determines whether a panel is a merge candidate based on threshold
+    merge_candidates = [panel for panel in panels if panel.area < thresh]
+    diag_candidates = [panel for panel in panels if panel.area > thresh]
+
+
+    while all_merged is False:
+        all_combos = list(itertools.combinations(merge_candidates, 2))
+        merge_candidates, all_merged = get_one_to_merge(all_combos, merge_candidates)
+
+    all_panels = diag_candidates
+    output_panels = relabel_panels(all_panels)
+    return output_panels, all_merged
+
+
+def merge_label_horizontally_repeats(panels):
+    """ Try to merge horizontally by brute force method"""
+
+    done = False
+
+    # Identifies panels within horizontal mergine criteria
+    while done is False:
+        thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
+        ordered_panels = order_by_area(panels)
+
+        panels, done = merge_loop(ordered_panels, thresh)
+
+    panels, done = merge_all_overlaps(panels)
+
+    return panels
+
+
+
+
+def merge_labels_horizontally(panels):
+    """ Identifies labels to merge from horizontal proximity and length"""
+
+    thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
+    ordered_panels = order_by_area(panels)
+
+    finished = False
+    merged_panels = find_next_merge_candidate(thresh, ordered_panels)
+    # while finished is False:
+    #     for a, b in itertools.combinations(ordered_panels, 2):
+    #
+    #         # Check panels lie in roughly the same line, that they are of label size and similar height
+    #         if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
+    #                     and abs(a.height - b.height) < a.height \
+    #                     and a.area < thresh and b.area < thresh:
+    #
+    #                 # Check that the distance between the edges of panels is not too large
+    #                 if ( a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width )or ( a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width ):
+    #                     merged_rect = merge_rect(a, b)
+    #                     ordered_panels.remove(a)
+    #                     ordered_panels.remove(b)
+    #                     ordered_panels.append(merged_rect) # NB : merged rectangles will be the last to be compared
+    #
+    #     finished = True
+
+    blacklist = []
+    output_panels = []
+
+    # Remove overlapping panels
+    for a, b in itertools.combinations(merged_panels, 2):
+        if a.contains(b):
+            blacklist.append(b)
+
+    merged_panels = [panel for panel in merged_panels if panel not in blacklist]
+
+    output_panels = relabel_panels(merged_panels)
     return output_panels
 
+
+
+
+    # thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
+
+    # Merging labels that are in close proximity vertically
+    # for a, b in itertools.combinations(panels, 2):
+    #     # Check that center of label is approximately 1.5*width of this box from the center of this box
+    #     # Check that height of labels are about the same
+    #     # Check that width of the boxes are comparable
+    #     # Check whitespace ratio? We do have the original figure (unbinarized etc) here now...
+    #
+    #     # if abs(a.center[0] - b.center[0]) < 1.5*a.width and abs(a.center[1] - b.center[1]) < 2*a.height \
+    #     #         and abs(a.height - b.height) < 0.2*a.height and abs(a.width - b.width) < 2*a.width \
+    #     #         and a.area < thresh and b.area < thresh:
+    #
+    #     # Check labels are in a similar x
+    #     if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
+    #             and abs(a.height - b.height) < 0.3 * a.height \
+    #             and a.area < thresh and b.area < thresh:
+    #
+    #         if a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width:
+    #             merged_rect = merge_rect(a, b)
+    #             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
+    #             output_panels.append(merged_panel)
+    #             debug_panels.append(merged_panel)
+    #             blacklisted_panels.extend([a, b])
+    #
+    #         elif a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width:
+    #             merged_rect = merge_rect(a, b)
+    #             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
+    #             output_panels.append(merged_panel)
+    #             debug_panels.append(merged_panel)
+    #             blacklisted_panels.extend([a, b])
+    #
+    #
+    # for panel in panels:
+    #     if panel not in blacklisted_panels:
+    #         output_panels.append(panel)
+    #
+    # output_panels = relabel_panels(output_panels)
+    #
+    # print(output_panels)
+    # #TODO : Return outputpanels after debug
+    # return debug_panels
 
 
 def merge_labels_vertically(panels):
@@ -330,6 +510,7 @@ def merge_labels_vertically(panels):
             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
             output_panels.append(merged_panel)
             blacklisted_panels.extend([a, b])
+
 
     for panel in panels:
         if panel not in blacklisted_panels:
