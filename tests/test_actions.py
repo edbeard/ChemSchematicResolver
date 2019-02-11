@@ -110,7 +110,7 @@ class TestActions(unittest.TestCase):
     def test_horizontal_merging(self):
         ''' Tests the horizontal merging is behaving'''
 
-        test_markush = os.path.join(markush_dir, 'S0143720816300286_gr1.jpg')
+        test_markush = os.path.join(markush_dir, 'S0143720816301681_gr1.jpg')
         fig = csde.io.imread(test_markush)
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
 

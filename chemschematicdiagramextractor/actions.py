@@ -197,7 +197,7 @@ def get_threshold(panels):
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
     areas = [panel.area for panel in panels]
-    return 0.95*np.mean(areas) # Threshold for classification
+    return 0.999*np.mean(areas) # Threshold for classification
 
 def classify_kruskal(panels):
     """ Classifies diagrams and labels for panels using Kruskals algorithm
@@ -301,7 +301,7 @@ def is_unque_panel(a, b):
         return False
 
 
-def merge_loop(panels, thresh):
+def merge_loop(panels):
     ''' Goes through the loop for merging.'''
 
     output_panels = []
@@ -312,12 +312,10 @@ def merge_loop(panels, thresh):
 
         # Check panels lie in roughly the same line, that they are of label size and similar height
         if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
-                and abs(a.height - b.height) < a.height \
-                and a.area < thresh and b.area < thresh:
+                and abs(a.height - b.height) < a.height:
 
             # Check that the distance between the edges of panels is not too large
-            if (a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width) or (
-                    a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width):
+            if (0 < a.left - b.right < 1.5 * a.width) or (0 < (b.left - a.right) < 1.5 * a.width):
 
                 merged_rect = merge_rect(a, b)
                 merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -363,19 +361,13 @@ def merge_all_overlaps(panels):
     """ Merges all overlapping rectangles together"""
 
     all_merged = False
-    thresh = get_threshold(panels)
-
-    # Determines whether a panel is a merge candidate based on threshold
-    merge_candidates = [panel for panel in panels if panel.area < thresh]
-    diag_candidates = [panel for panel in panels if panel.area > thresh]
 
 
     while all_merged is False:
-        all_combos = list(itertools.combinations(merge_candidates, 2))
-        merge_candidates, all_merged = get_one_to_merge(all_combos, merge_candidates)
+        all_combos = list(itertools.combinations(panels, 2))
+        panels, all_merged = get_one_to_merge(all_combos, panels)
 
-    all_panels = diag_candidates
-    output_panels = relabel_panels(all_panels)
+    output_panels = relabel_panels(panels)
     return output_panels, all_merged
 
 
@@ -384,16 +376,20 @@ def merge_label_horizontally_repeats(panels):
 
     done = False
 
+    thresh = get_threshold(panels)  # Could use a different threshold function for horizontal?
+    # Determines whether a panel is a merge candidate based on threshold
+    merge_candidates = [panel for panel in panels if panel.area < thresh]
+    diag_candidates = [panel for panel in panels if panel.area > thresh]
+
     # Identifies panels within horizontal mergine criteria
     while done is False:
-        thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
-        ordered_panels = order_by_area(panels)
+        ordered_panels = order_by_area(merge_candidates)
+        merge_candidates, done = merge_loop(ordered_panels)
 
-        panels, done = merge_loop(ordered_panels, thresh)
+    merge_candidates, done = merge_all_overlaps(merge_candidates)
+    all_panels =  merge_candidates
 
-    panels, done = merge_all_overlaps(panels)
-
-    return panels
+    return all_panels
 
 
 
