@@ -158,7 +158,7 @@ def preprocessing(panels, fig):
 
     # Pre-processing filtering
     panels = get_repeating_unit(panels, fig)
-   # panels = merge_labels_horizontally(panels)
+    panels = merge_label_horizontally_repeats(panels)
     panels = merge_labels_vertically(panels)
     return panels
 
@@ -197,7 +197,7 @@ def get_threshold(panels):
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
     areas = [panel.area for panel in panels]
-    return 0.999*np.mean(areas) # Threshold for classification
+    return 1.8*np.mean(areas) # Threshold for classification
 
 def classify_kruskal(panels):
     """ Classifies diagrams and labels for panels using Kruskals algorithm
@@ -315,7 +315,7 @@ def merge_loop(panels):
                 and abs(a.height - b.height) < a.height:
 
             # Check that the distance between the edges of panels is not too large
-            if (0 < a.left - b.right < 1.5 * a.width) or (0 < (b.left - a.right) < 1.5 * a.width):
+            if (0 < a.left - b.right < max(a.width, b.width))or (0 < (b.left - a.right) < max(a.width, b.width)):
 
                 merged_rect = merge_rect(a, b)
                 merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -387,7 +387,7 @@ def merge_label_horizontally_repeats(panels):
         merge_candidates, done = merge_loop(ordered_panels)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
-    all_panels =  merge_candidates
+    all_panels = diag_candidates +  merge_candidates
 
     return all_panels
 

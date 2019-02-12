@@ -70,9 +70,10 @@ class TestSystem(unittest.TestCase):
 
     def test_segmentation_all(self):
 
-        test_imgs = os.listdir(markush_dir)
+        test_path = markush_dir
+        test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
-            self.do_segmentation(img_path, filedir=markush_dir)
+            self.do_segmentation(img_path, filedir=test_path)
 
     def test_segmentation1(self):
         self.do_segmentation('S014372081630119X_gr1.jpg')
@@ -107,6 +108,12 @@ class TestSystem(unittest.TestCase):
 
     def test_segmentation_markush_img(self):
         self.do_segmentation('S0143720816301115_r75.jpg')
+
+    def test_segmentation_markush_img2(self):
+        self.do_segmentation('S0143720816300286_gr1.jpg')
+
+    def test_segmentation_markush_img3(self):
+        self.do_segmentation('S0143720816301681_gr1.jpg')
 
 
     def do_grouping_by_ocr(self):
@@ -182,9 +189,10 @@ class TestSystem(unittest.TestCase):
 
     def test_grouping_all(self):
 
-        test_imgs = os.listdir(markush_dir)
+        test_path = markush_dir
+        test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
-            self.do_grouping(img_path, filedir=markush_dir)
+            self.do_grouping(img_path, filedir=test_path)
 
 
     def test_grouping1(self):
