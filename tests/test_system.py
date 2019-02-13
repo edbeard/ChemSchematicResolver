@@ -70,7 +70,7 @@ class TestSystem(unittest.TestCase):
 
     def test_segmentation_all(self):
 
-        test_path = markush_dir
+        test_path = examples_dir
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             self.do_segmentation(img_path, filedir=test_path)

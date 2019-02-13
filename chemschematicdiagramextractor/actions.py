@@ -32,6 +32,7 @@ import itertools
 import copy
 
 from scipy import ndimage as ndi
+from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
 
 from .model import Panel, Diagram, Label, Rect, Graph
@@ -158,7 +159,7 @@ def preprocessing(panels, fig):
 
     # Pre-processing filtering
     panels = get_repeating_unit(panels, fig)
-    panels = merge_label_horizontally_repeats(panels)
+    panels = merge_label_horizontally(panels)
     panels = merge_labels_vertically(panels)
     return panels
 
@@ -193,11 +194,63 @@ def kruskal(panels):
     return sorted_edges
 
 def get_threshold(panels):
-    """ Gets threshold for diagrams vs labels from panel areas"""
+    """ Get's a basic threshold value from area"""
+
+    return 1.5 * np.mean([panel.area for panel in panels])
+
+
+def get_labels_and_diagrams_k_means_clustering(panels):
+    """ Splits into labels and diagrams using kmeans clustering of area"""
+
+    all_areas =  np.array([panel.area for panel in panels])
+    km = KMeans(n_clusters=2)
+    clusters = km.fit(all_areas.reshape(-1,1))
+
+    group_1, group_2 =[], []
+
+    for i, cluster in enumerate(clusters.labels_):
+        print(cluster)
+        if cluster == 0:
+            group_1.append(panels[i])
+        else:
+            group_2.append(panels[i])
+
+    if np.mean([panel.area for panel in group_1]) > np.mean([panel.area for panel in group_2]):
+        diags = group_1
+        labels = group_2
+    else:
+        diags = group_2
+        labels = group_1
+
+    return labels, diags
+
+
+def get_labels_and_diagrams_from_threshold(panels):
+    """ Separates into diagrams and lables based on a threshold"""
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
-    areas = [panel.area for panel in panels]
-    return 1.8*np.mean(areas) # Threshold for classification
+    all_areas =  [panel.area for panel in panels]
+    area_mean = np.mean([panel.area for panel in panels])
+    area_std = np.std([panel.area for panel in panels])
+
+    # Identifying labels from values that are one std less than the mean
+    labels = [panel for panel in panels if panel.area < (area_mean - 0.25*area_std)]
+    diagrams = [panel for panel in panels if panel.area >= (area_mean - 0.25*area_std)]
+
+    return labels, diagrams  # Threshold for classification
+
+
+def get_threshold_width_height(panels):
+    """ Creates a thresholdbased on the average width and height of all images"""
+
+    # NB : Not implemented anywhere currently
+
+    width_avg = np.mean([panel.width for panel in panels])
+    height_avg = np.mean([panel.width for panel in panels])
+
+    width_std = np.std([panel.width for panel in panels])
+    height_std = np.std([panel.width for panel in panels])
+
 
 def classify_kruskal(panels):
     """ Classifies diagrams and labels for panels using Kruskals algorithm
@@ -371,116 +424,32 @@ def merge_all_overlaps(panels):
     return output_panels, all_merged
 
 
-def merge_label_horizontally_repeats(panels):
+def merge_label_horizontally(panels):
     """ Try to merge horizontally by brute force method"""
 
     done = False
 
-    thresh = get_threshold(panels)  # Could use a different threshold function for horizontal?
-    # Determines whether a panel is a merge candidate based on threshold
-    merge_candidates = [panel for panel in panels if panel.area < thresh]
-    diag_candidates = [panel for panel in panels if panel.area > thresh]
+    # Separate based on clusters
+    merge_candidates, diag_candidates = get_labels_and_diagrams_k_means_clustering(panels)
 
-    # Identifies panels within horizontal mergine criteria
+    # TODO : Put this ^ thresholding elsewhere in pipeline
+
+    # Identifies panels within horizontal merging criteria
     while done is False:
         ordered_panels = order_by_area(merge_candidates)
         merge_candidates, done = merge_loop(ordered_panels)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
-    all_panels = diag_candidates +  merge_candidates
+    all_panels = merge_candidates
 
     return all_panels
 
 
-
-
-def merge_labels_horizontally(panels):
-    """ Identifies labels to merge from horizontal proximity and length"""
-
-    thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
-    ordered_panels = order_by_area(panels)
-
-    finished = False
-    merged_panels = find_next_merge_candidate(thresh, ordered_panels)
-    # while finished is False:
-    #     for a, b in itertools.combinations(ordered_panels, 2):
-    #
-    #         # Check panels lie in roughly the same line, that they are of label size and similar height
-    #         if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
-    #                     and abs(a.height - b.height) < a.height \
-    #                     and a.area < thresh and b.area < thresh:
-    #
-    #                 # Check that the distance between the edges of panels is not too large
-    #                 if ( a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width )or ( a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width ):
-    #                     merged_rect = merge_rect(a, b)
-    #                     ordered_panels.remove(a)
-    #                     ordered_panels.remove(b)
-    #                     ordered_panels.append(merged_rect) # NB : merged rectangles will be the last to be compared
-    #
-    #     finished = True
-
-    blacklist = []
-    output_panels = []
-
-    # Remove overlapping panels
-    for a, b in itertools.combinations(merged_panels, 2):
-        if a.contains(b):
-            blacklist.append(b)
-
-    merged_panels = [panel for panel in merged_panels if panel not in blacklist]
-
-    output_panels = relabel_panels(merged_panels)
-    return output_panels
-
-
-
-
-    # thresh = get_threshold(panels) # Could use a different threshold function for horizontal?
-
-    # Merging labels that are in close proximity vertically
-    # for a, b in itertools.combinations(panels, 2):
-    #     # Check that center of label is approximately 1.5*width of this box from the center of this box
-    #     # Check that height of labels are about the same
-    #     # Check that width of the boxes are comparable
-    #     # Check whitespace ratio? We do have the original figure (unbinarized etc) here now...
-    #
-    #     # if abs(a.center[0] - b.center[0]) < 1.5*a.width and abs(a.center[1] - b.center[1]) < 2*a.height \
-    #     #         and abs(a.height - b.height) < 0.2*a.height and abs(a.width - b.width) < 2*a.width \
-    #     #         and a.area < thresh and b.area < thresh:
-    #
-    #     # Check labels are in a similar x
-    #     if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
-    #             and abs(a.height - b.height) < 0.3 * a.height \
-    #             and a.area < thresh and b.area < thresh:
-    #
-    #         if a.center[0] > b.center[0] and a.left - b.right > 0.5 * a.width:
-    #             merged_rect = merge_rect(a, b)
-    #             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-    #             output_panels.append(merged_panel)
-    #             debug_panels.append(merged_panel)
-    #             blacklisted_panels.extend([a, b])
-    #
-    #         elif a.center[0] < b.center[0] and b.left - a.right > 0.5 * a.width:
-    #             merged_rect = merge_rect(a, b)
-    #             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-    #             output_panels.append(merged_panel)
-    #             debug_panels.append(merged_panel)
-    #             blacklisted_panels.extend([a, b])
-    #
-    #
-    # for panel in panels:
-    #     if panel not in blacklisted_panels:
-    #         output_panels.append(panel)
-    #
-    # output_panels = relabel_panels(output_panels)
-    #
-    # print(output_panels)
-    # #TODO : Return outputpanels after debug
-    # return debug_panels
-
-
 def merge_labels_vertically(panels):
     """ Identifies labels to merge from vertical proximity and length"""
+
+    # TODO : Simplify/improve logic : look at horizontal for advice.
+    # TODO : Remove dependence on threshold
 
     output_panels = []
     blacklisted_panels = []
@@ -489,14 +458,6 @@ def merge_labels_vertically(panels):
 
     # Merging labels that are in close proximity vertically
     for a, b in itertools.combinations(panels, 2):
-        # Check that center of label is approximately 1.5*height of this box from the center of this box
-        # Check that height of labels are about the same
-        # Check that width of the boxes are comparable
-        # Check whitespace ratio? We do have the original figure (unbinarized etc) here now...
-
-        # if abs(a.center[0] - b.center[0]) < 1.5*a.width and abs(a.center[1] - b.center[1]) < 2*a.height \
-        #         and abs(a.height - b.height) < 0.2*a.height and abs(a.width - b.width) < 2*a.width \
-        #         and a.area < thresh and b.area < thresh:
 
         if abs(a.center[0] - b.center[0]) < 1.5 * a.width and abs(a.center[1] - b.center[1]) < 3 * a.height \
                 and abs(a.height - b.height) < 0.3 * a.height and abs(a.width - b.width) < 2 * a.width \
