@@ -50,14 +50,16 @@ class TestSystem(unittest.TestCase):
 
         panels = csde.actions.segment(raw_fig)
         print('Segmented panel number : %s ' % len(panels))
-        panels = csde.actions.preprocessing(panels, fig)
-        print('After processing : %s' % len(panels))
+        labels, diags = csde.actions.classify_kmeans(panels)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        all_panels = labels + diags
+        print('After processing : %s' % len(all_panels))
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        for panel in panels:
+        for panel in all_panels:
 
             diag_rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
                                            fill=False, edgecolor='r', linewidth=2)
@@ -142,13 +144,14 @@ class TestSystem(unittest.TestCase):
         bin_fig = copy.deepcopy(fig)
 
         panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        labels, diags = csde.actions.classify_kmeans(panels)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        diags, labels = csde.actions.classify_kruskal(panels)
+        #diags, labels = csde.actions.classify_kruskal(panels)
         labelled_diags = csde.actions.label_kruskal(diags, labels)
         #labelled_diags = csde.actions.label_diags(diags, labels)
 

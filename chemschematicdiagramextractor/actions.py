@@ -155,13 +155,23 @@ def segment(fig):
 
     return panels
 
-def preprocessing(panels, fig):
+def classify_kmeans(panels):
+    ''' Takes the input images, then classifies through k means cluster of the panel area '''
+
+    return get_labels_and_diagrams_k_means_clustering(panels)
+
+def preprocessing(labels, diags, fig):
+    ''' Preprocessing steps, expand as needed'''
 
     # Pre-processing filtering
-    panels = get_repeating_unit(panels, fig)
-    panels = merge_label_horizontally(panels)
-    panels = merge_labels_vertically(panels)
-    return panels
+    # TODO : Fix the repeating unit logic to work under new, early classification system
+    # panels = get_repeating_unit(panels, fig)
+
+
+    label_candidates_horizontally_merged = merge_label_horizontally(labels)
+    label_candidates_fully_merged = merge_labels_vertically_test(label_candidates_horizontally_merged)
+
+    return label_candidates_fully_merged, diags
 
 
 def classify(panels):
@@ -192,6 +202,12 @@ def kruskal(panels):
 
     sorted_edges = g.kruskal()
     return sorted_edges
+
+def classify_kruskal_after_kmeans(panels):
+    ''' Pairs up diagrams and pairs after clustering via kmeans'''
+
+
+
 
 def get_threshold(panels):
     """ Get's a basic threshold value from area"""
@@ -354,7 +370,7 @@ def is_unque_panel(a, b):
         return False
 
 
-def merge_loop(panels):
+def merge_loop_horizontal(panels):
     ''' Goes through the loop for merging.'''
 
     output_panels = []
@@ -387,6 +403,34 @@ def merge_loop(panels):
 
     return output_panels, done
 
+
+def merge_loop_vertical(panels):
+
+    output_panels = []
+    blacklisted_panels = []
+    #done = True
+
+    # Merging labels that are in close proximity vertically
+    for a, b in itertools.combinations(panels, 2):
+
+        if abs(a.center[0] - b.center[0]) < 0.5 * max(a.width, b.width) and abs(a.center[1] - b.center[1]) < 3 * max(a.height, b.height) \
+                and abs(a.height - b.height) < 0.3 * max(a.height, b.height) and abs(a.width - b.width) < 2 * max(a.width, b.width):
+
+            merged_rect = merge_rect(a, b)
+            merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
+            output_panels.append(merged_panel)
+            blacklisted_panels.extend([a, b])
+           # done = False
+
+    for panel in panels:
+        if panel not in blacklisted_panels:
+            output_panels.append(panel)
+
+    output_panels = relabel_panels(output_panels)
+
+    print(output_panels)
+    return output_panels#, done
+
 def merge_overlap(a, b):
     """ Checks whether panels a and b overlap. If they do, returns new merged panel"""
 
@@ -415,7 +459,6 @@ def merge_all_overlaps(panels):
 
     all_merged = False
 
-
     while all_merged is False:
         all_combos = list(itertools.combinations(panels, 2))
         panels, all_merged = get_one_to_merge(all_combos, panels)
@@ -424,25 +467,32 @@ def merge_all_overlaps(panels):
     return output_panels, all_merged
 
 
-def merge_label_horizontally(panels):
+def merge_label_horizontally(merge_candidates):
     """ Try to merge horizontally by brute force method"""
 
     done = False
 
-    # Separate based on clusters
-    merge_candidates, diag_candidates = get_labels_and_diagrams_k_means_clustering(panels)
-
-    # TODO : Put this ^ thresholding elsewhere in pipeline
-
     # Identifies panels within horizontal merging criteria
     while done is False:
         ordered_panels = order_by_area(merge_candidates)
-        merge_candidates, done = merge_loop(ordered_panels)
+        merge_candidates, done = merge_loop_horizontal(ordered_panels)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
-    all_panels = merge_candidates
 
-    return all_panels
+    return merge_candidates
+
+def merge_labels_vertically_test(merge_candidates):
+    """ Try to merge vertically using brute force method"""
+
+    done = False
+
+    # Identifies panels within horizontal merging criteria
+    ordered_panels = order_by_area(merge_candidates)
+    merge_candidates = merge_loop_vertical(ordered_panels)
+
+    merge_candidates, done = merge_all_overlaps(merge_candidates)
+
+    return merge_candidates
 
 
 def merge_labels_vertically(panels):
@@ -454,20 +504,17 @@ def merge_labels_vertically(panels):
     output_panels = []
     blacklisted_panels = []
 
-    thresh = get_threshold(panels)
 
     # Merging labels that are in close proximity vertically
     for a, b in itertools.combinations(panels, 2):
 
         if abs(a.center[0] - b.center[0]) < 1.5 * a.width and abs(a.center[1] - b.center[1]) < 3 * a.height \
-                and abs(a.height - b.height) < 0.3 * a.height and abs(a.width - b.width) < 2 * a.width \
-                and a.area < thresh and b.area < thresh:
+                and abs(a.height - b.height) < 0.3 * a.height and abs(a.width - b.width) < 2 * a.width:
 
             merged_rect = merge_rect(a, b)
             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
             output_panels.append(merged_panel)
             blacklisted_panels.extend([a, b])
-
 
     for panel in panels:
         if panel not in blacklisted_panels:
@@ -478,38 +525,6 @@ def merge_labels_vertically(panels):
     print(output_panels)
     return output_panels
 
-
-
-def merge_labels_kruskal(panels):
-    """ Identifies labels to merge from sorted edges"""
-
-    output_panels = []
-    blacklisted_panels = []
-
-    edges = kruskal(panels)
-    thresh = get_threshold(panels)
-
-    for edge in edges:
-        # Could simplify this loop using dict?
-        for panel in panels:
-            if panel.tag == edge[0]:
-                p1 = panel
-            elif panel.tag == edge[1]:
-                p2 = panel
-
-        if p1.area < thresh and p2.area < thresh:
-            merged_rect = merge_rect(p1, p2)
-            merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-            output_panels.append(merged_panel)
-            blacklisted_panels.extend([p1, p2])
-
-    for panel in panels:
-        if panel not in blacklisted_panels:
-            output_panels.append(panel)
-
-    output_panels = relabel_panels(output_panels)
-
-    return output_panels
 
 def merge_rect(rect1, rect2):
     """ Merges rectangle with another, such that the bounding box enclose both
