@@ -30,13 +30,14 @@ import subprocess
 import os
 import itertools
 import copy
+from chemdataextractor.doc.text import Sentence
 
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
 
 from .model import Panel, Diagram, Label, Rect, Graph
-from .ocr import get_text, get_lines, PSM, LABEL_WHITELIST
+from .ocr import get_text, get_lines, get_sentences, PSM, LABEL_WHITELIST
 from .io import img_as_pil , imsave # for debugging
 
 log = logging.getLogger(__name__)
@@ -203,10 +204,49 @@ def kruskal(panels):
     sorted_edges = g.kruskal()
     return sorted_edges
 
-def classify_kruskal_after_kmeans(panels):
+def assign_labels_diagram_pairs_after_kmeans(labels, diagrams):
+    ''' Assigns label-digaram pairs after doing kmeans to identify'''
+
+def classify_kruskal_after_kmeans(labels, diagrams):
     ''' Pairs up diagrams and pairs after clustering via kmeans'''
 
 
+    ordered_diags = []
+    ordered_labels = []
+    used_tags = []
+
+    converted_labels = [Label(label.left, label.right, label.top, label.bottom, 0) for label in labels]
+    converted_diagrams = [Diagram(diag.left, diag.right, diag.top, diag.bottom, 0) for diag in diagrams]
+    sorted_labels_and_diags = relabel_panels(converted_diagrams + converted_labels)
+
+    sorted_edges = kruskal(sorted_labels_and_diags)
+
+    for edge in sorted_edges:
+
+        for panel in sorted_labels_and_diags:
+            if panel.tag == edge[0]:
+                p1 = panel
+            elif panel.tag == edge[1]:
+                p2 = panel
+
+        if p1.tag in used_tags or p2.tag in used_tags:
+            pass
+        elif type(p1).__name__ == 'Diagram' and type(p2).__name__ == 'Label':
+            ordered_diags.append(p1)
+            ordered_labels.append(p2)
+            used_tags.extend([p1.tag, p2.tag])
+
+        elif type(p2).__name__ == 'Diagram' and type(p1).__name__ == 'Label':
+            ordered_diags.append(p2)
+            ordered_labels.append(p1)
+            used_tags.extend([p1.tag, p2.tag])
+
+    print('Pairs that were assigned')
+    for i, diag in enumerate(ordered_diags):
+        print (diag, labels[i])
+        diag.label = labels[i]
+
+    return ordered_diags
 
 
 def get_threshold(panels):
@@ -597,17 +637,23 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     img = convert_greyscale(fig.img)
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
     text = get_text(cropped_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
-    label_text = get_lines(text)
+    raw_sentences = get_sentences(text)
 
-    sentences = []
+    if len(raw_sentences) is not 0:
+        # Tag each sentence
+        tagged_sentences = [Sentence(sentence) for sentence in raw_sentences]
 
-    if len(label_text) is not 0:
-        for line in label_text:
-            words = []
-            for word in line:
-                words.append(word.text)
-            sentences.append(words)
-    return sentences
+    return tagged_sentences
+
+def detect_markush(diags):
+    """ Determines whether a label represents a Markush structure, and if so gives the variable and value
+
+    # TODO : docstring
+    """
+
+
+
+
 
 def read_diagram(fig, diag):
     """ Converts diagram to SMILES using OSRA"""

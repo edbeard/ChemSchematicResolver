@@ -177,12 +177,20 @@ class Diagram(Panel):
         self._smile = smile
 
     def __repr__(self):
-        return '%s(label=%s, smile=%s' % (
-            self.__class__.__name__, self.label.tag, self.smile
-        )
+        if self.label is not None:
+            return '%s(label=%s, smile=%s' % (
+                self.__class__.__name__, self.label.tag, self.smile
+            )
+        else:
+            return '%s(label=None, smile=%s' % (
+                self.__class__.__name__, self.smile
+            )
 
     def __str__(self):
-        return '<%s (%s, %s)>' % (self.__class__.__name__, self.label.tag, self.smile)
+        if self.label is not None:
+            return '<%s (%s, %s)>' % (self.__class__.__name__, self.label.tag, self.smile)
+        else:
+            return '<%s (%s, %s)' % (self.__class__.__name__, self.tag, self.smile)
 
 
 

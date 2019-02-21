@@ -151,8 +151,13 @@ class TestSystem(unittest.TestCase):
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        #diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+       # labelled_diags = csde.actions.classify_kruskal_after_kmeans(labels, diags)
+        labelled_diags = csde.actions.label_diags(labels, diags)
+
+
+        # panels = csde.actions.relabel_panels(panels)
+        # diags, labels = csde.actions.classify_kruskal(panels)
+        # labelled_diags = csde.actions.label_kruskal(diags, labels)
         #labelled_diags = csde.actions.label_diags(diags, labels)
 
         colours = iter(['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y','r', 'b', 'g', 'k', 'c', 'm', 'y'])
@@ -162,37 +167,20 @@ class TestSystem(unittest.TestCase):
 
             diag_rect = mpatches.Rectangle((diag.left, diag.top), diag.width, diag.height,
                                       fill=False, edgecolor=colour, linewidth=2)
-            ax.text(diag.left, diag.top + diag.height / 4, '[%s]' % diag.tag, size=diag.height / 20, color='r')
             ax.add_patch(diag_rect)
 
             label = diag.label
             label_rect = mpatches.Rectangle((label.left, label.top), label.width, label.height,
                                       fill=False, edgecolor=colour, linewidth=2)
-            ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
-
-        # for panel in diags:
-        #     rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
-        #                               fill=False, edgecolor='red', linewidth=2)
-        #
-        #
-        # for panel in labels:
-        #     rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
-        #                               fill=False, edgecolor='yellow', linewidth=2)
-        #     ax.text(panel.left, panel.top + panel.height / 4, '[%s]' % panel.tag, size=panel.height, color='r')
-        #     ax.add_patch(rect)
 
         ax.set_axis_off()
         plt.show()
-        # for diag in diags:
-        #     csde.actions.assign_label_to_diag(diag, labels)
-        # labelled_diags = csde.actions.label_diags(diags, labels)
-        # tagged_diags = csde.actions.read_all_labels(fig, labelled_diags)
-        # tagged_resolved_diags = csde.actions.read_all_diags(raw_fig, tagged_diags)
+
 
     def test_grouping_all(self):
 
-        test_path = markush_dir
+        test_path = examples_dir
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             self.do_grouping(img_path, filedir=test_path)
@@ -233,11 +221,11 @@ class TestSystem(unittest.TestCase):
         self.do_grouping('S0143720816300286_gr1.jpg')
 
 
-    def do_ocr(self, filename):
+    def do_ocr(self, filename, filedir=examples_dir):
         """ Tests the OCR recognition """
 
 
-        test_diag = os.path.join(examples_dir, filename)
+        test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
@@ -247,14 +235,15 @@ class TestSystem(unittest.TestCase):
         bin_fig = copy.deepcopy(fig)
 
         panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        labels, diags = csde.actions.classify_kmeans(panels)
+        labels, diags = csde.actions.preprocessing(labels, diags, bin_fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        labelled_diags = csde.actions.label_diags(diags, labels)
+
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
@@ -276,7 +265,9 @@ class TestSystem(unittest.TestCase):
             ax.add_patch(label_rect)
 
             label_text = csde.actions.read_label(fig, label)
-            labels_text.append(label_text)
+            label_strings = [label.text for label in label_text]
+            output_label = ' '.join(label_strings)
+            labels_text.append(output_label)
             print("Label %s : %s " % (label.tag, label_text))
 
         ax.set_axis_off()
@@ -284,11 +275,21 @@ class TestSystem(unittest.TestCase):
 
         return labels_text
 
+    def test_ocr_all(self):
+
+        test_path = examples_dir
+        test_imgs = os.listdir(test_path)
+        for img_path in test_imgs:
+            self.do_ocr(img_path, filedir=test_path)
+
     def test_ocr1(self):
         labels_text = self.do_ocr('S014372081630119X_gr1.jpg')
-        gold = [[['EtNAPH']], [['MeNAPH:', 'R=CH3'], ['MeONAPH:', 'R=OCH3']]]
+        labels_text = [text.replace('\n', '') for text in labels_text]
+        gold = ['EtNAPH', 'MeNAPH: R=CH3 MeONAPH: R=OCH3']
         for x in gold:
             self.assertIn(x, labels_text)
+
+    # TODO : Update all OCR tests to reflect new format
 
     def test_ocr2(self):
         labels_text = self.do_ocr('S014372081630122X_gr1.jpg')
@@ -366,7 +367,7 @@ class TestSystem(unittest.TestCase):
         bin_fig = copy.deepcopy(fig)
 
         panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        panels = csde.actions.preprocessing(panels, bin_fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))

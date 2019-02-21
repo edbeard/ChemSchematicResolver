@@ -142,6 +142,20 @@ def get_lines(blocks):
     return lines
 
 
+def get_sentences(blocks):
+    """Convert list of text blocks into a nested list of lines, each of which contains a list of words.
+
+    :param list[TextBlock] blocks: List of text blocks.
+    :return: List of sentences
+    :rtype: list[list[TextWord]]
+    """
+    sentences = []
+    for block in blocks:
+        for para in block:
+            for line in para:
+                sentences.append(line.text)
+    return sentences
+
 def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=None, img_orientation=None):
     """Get text elements in image.
 
