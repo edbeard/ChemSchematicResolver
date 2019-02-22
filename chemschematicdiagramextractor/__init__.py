@@ -24,4 +24,4 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-from . import io, model, actions, validate, ocr
+from . import io, model, actions, validate, ocr, r_group

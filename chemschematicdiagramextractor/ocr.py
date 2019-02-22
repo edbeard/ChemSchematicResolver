@@ -32,7 +32,8 @@ ALPHABET_LOWER = ALPHABET_UPPER.lower()
 DIGITS = '0123456789'
 ASSIGNMENT = ':;=-'
 CONCENTRATION = '%()<>'
-LABEL_WHITELIST = ASSIGNMENT+DIGITS+ALPHABET_UPPER+ALPHABET_LOWER+CONCENTRATION
+SEPERATORS = ','
+LABEL_WHITELIST = ASSIGNMENT+DIGITS+ALPHABET_UPPER+ALPHABET_LOWER+CONCENTRATION+SEPERATORS
 
 
 # These enums just wrap tesserocr functionality, so we can return proper enum members instead of ints.
@@ -153,7 +154,7 @@ def get_sentences(blocks):
     for block in blocks:
         for para in block:
             for line in para:
-                sentences.append(line.text)
+                sentences.append(line.text.replace(',', ' ')) # NB - commas switched for spaces to improve tokenization
     return sentences
 
 def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=None, img_orientation=None):

@@ -178,11 +178,11 @@ class Diagram(Panel):
 
     def __repr__(self):
         if self.label is not None:
-            return '%s(label=%s, smile=%s' % (
+            return '%s(label=%s, smile=%s)' % (
                 self.__class__.__name__, self.label.tag, self.smile
             )
         else:
-            return '%s(label=None, smile=%s' % (
+            return '%s(label=None, smile=%s)' % (
                 self.__class__.__name__, self.smile
             )
 
@@ -199,6 +199,7 @@ class Label(Panel):
 
     def __init__(self, *args):
         super(Label, self).__init__(*args)
+        self.r_group = []
 
     @property
     def text(self):
@@ -207,6 +208,20 @@ class Label(Panel):
     @text.setter
     def text(self, text):
         self._text = text
+
+    def r_group(self):
+        """ List of lists of tuples containing variable-value pairs.
+            Each list represents a particular combination of chemicals yielding a unique compound.
+        """
+        return self.r_group
+
+
+    def add_r_group_variables(self, var_value_tuples):
+        """ Updates the R-groups for this label."""
+
+        self.r_group.append(var_value_tuples)
+
+
 
 @decorators.python_2_unicode_compatible
 class Figure(object):

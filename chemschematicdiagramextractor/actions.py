@@ -69,7 +69,7 @@ def binarize(fig, threshold=0.85):
     return fig
 
 
-def binary_close(fig, size=16, ratio=2):
+def binary_close(fig, size=20, ratio=2):
     """ Joins unconnected pixel by dilation and erosion"""
     selem = disk(size)
     # width = size*ratio
@@ -171,8 +171,9 @@ def preprocessing(labels, diags, fig):
 
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically_test(label_candidates_horizontally_merged)
+    labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
 
-    return label_candidates_fully_merged, diags
+    return labels_converted, diags
 
 
 def classify(panels):
@@ -277,6 +278,10 @@ def get_labels_and_diagrams_k_means_clustering(panels):
     else:
         diags = group_2
         labels = group_1
+
+    # Convert to appropriate types
+    labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels]
+    diags = [Diagram(diag.left, diag.right, diag.top, diag.bottom, diag.tag) for diag in diags]
 
     return labels, diags
 
@@ -492,6 +497,13 @@ def get_one_to_merge(all_combos, panels):
 
     return panels, True
 
+def convert_panels_to_labels(panels):
+    """ Converts a list of panels to a list of lables"""
+
+    # TODO : Implement this whenever this conversion is made
+
+    return [Label(panel.left, panel.right, panel.top, panel.bottom, panel.tag) for panel in panels]
+
 
 
 def merge_all_overlaps(panels):
@@ -643,16 +655,9 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
         # Tag each sentence
         tagged_sentences = [Sentence(sentence) for sentence in raw_sentences]
 
-    return tagged_sentences
+    label.text = tagged_sentences
 
-def detect_markush(diags):
-    """ Determines whether a label represents a Markush structure, and if so gives the variable and value
-
-    # TODO : docstring
-    """
-
-
-
+    return label
 
 
 def read_diagram(fig, diag):
