@@ -39,6 +39,7 @@ from matplotlib import pyplot as plt
 from .model import Panel, Diagram, Label, Rect, Graph
 from .ocr import get_text, get_lines, get_sentences, PSM, LABEL_WHITELIST
 from .io import img_as_pil , imsave # for debugging
+from .parse import LabelParser
 
 log = logging.getLogger(__name__)
 
@@ -653,8 +654,9 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
 
     if len(raw_sentences) is not 0:
         # Tag each sentence
-        tagged_sentences = [Sentence(sentence) for sentence in raw_sentences]
-
+        tagged_sentences = [Sentence(sentence, parsers=[LabelParser()]) for sentence in raw_sentences]
+    else:
+        tagged_sentences = []
     label.text = tagged_sentences
 
     return label

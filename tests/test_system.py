@@ -19,7 +19,6 @@ import chemschematicdiagramextractor as csde
 import os
 import unittest
 import copy
-import numpy as np
 
 from skimage import img_as_float
 from matplotlib import pyplot as plt
@@ -78,6 +77,7 @@ class TestSystem(unittest.TestCase):
             self.do_segmentation(img_path, filedir=test_path)
 
     def test_segmentation1(self):
+
         self.do_segmentation('S014372081630119X_gr1.jpg')
 
     def test_segmentation2(self):
@@ -379,8 +379,6 @@ class TestSystem(unittest.TestCase):
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
 
-        labels_text = []
-
         for diag in labelled_diags:
             colour = next(colours)
 
@@ -500,6 +498,87 @@ class TestSystem(unittest.TestCase):
         gold = [[('X', 'NH'), ('R', 'CN')], [('X', 'NC(O)OEt'), ('R', 'CN')], [('X', 'O'), ('R', 'CN')], [('X', 'O'), ('R', 'H')]]
         for diag in unique_combos:
             self.assertIn(diag, gold)
+
+    def do_r_group_resolution(self, filename, filedir=examples_dir):
+        """ Tests the R-group detection, recognition and resoltuion"""
+
+
+        smiles = []
+        test_diag = os.path.join(filedir, filename)
+
+        # Read in float and raw pixel images
+        fig = csde.io.imread(test_diag)
+        raw_fig = csde.io.imread(test_diag, raw=True)
+
+        # Create unreferenced binary copy
+        bin_fig = copy.deepcopy(fig)
+
+        panels = csde.actions.segment(bin_fig)
+        labels, diags = csde.actions.classify_kmeans(panels)
+        labels, diags = csde.actions.preprocessing(labels, diags, bin_fig)
+
+        # Create output image
+        out_fig, ax = plt.subplots(figsize=(10, 6))
+        ax.imshow(fig.img)
+
+        labelled_diags = csde.actions.label_diags(diags, labels)
+
+        colours = iter(
+            ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
+
+        for diag in labelled_diags:
+            colour = next(colours)
+
+            diag_rect = mpatches.Rectangle((diag.left, diag.top), diag.width, diag.height,
+                                           fill=False, edgecolor=colour, linewidth=2)
+            ax.text(diag.left, diag.top + diag.height / 4, '[%s]' % diag.tag, size=diag.height / 20, color='r')
+            ax.add_patch(diag_rect)
+
+            label = diag.label
+            label_rect = mpatches.Rectangle((label.left, label.top), label.width, label.height,
+                                            fill=False, edgecolor=colour, linewidth=2)
+            ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
+            ax.add_patch(label_rect)
+
+            diag.label = csde.actions.read_label(fig, label)
+            diag = csde.r_group.detect_r_group(diag)
+
+            print(diag.label.r_group)
+
+
+            # label_strings = [label.text for label in label.text]
+            # output_label = ' '.join(label_strings)
+            # labels_text.append(output_label)
+            # print("Label %s : %s " % (label.tag, labels_text))
+
+            if diag.label.r_group != [[]]:
+                smile = csde.r_group.get_rgroup_smiles(diag, fig)
+                smiles.append(smile)
+                print(smile)
+
+        ax.set_axis_off()
+        plt.show()
+
+
+
+        return smiles
+
+
+    def test_r_group_resolution1(self):
+        smiles = self.do_r_group_resolution('S014372081630119X_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = [['c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(C)cc4)c4ccc(cc4)C)cc2)cccc3)cc1)c1ccc(C)cc1)C',
+                'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(OC)cc4)c4ccc(cc4)OC)cc2)cccc3)cc1)c1ccc(OC)cc1)OC']]
+
+        self.assertEqual(gold, smiles)
+
+        #osra_rgroup.hack_osra_process_image([{"R":"CH3"}, {"R":"OCH3"}])
+
+        # all_detected_r_groups_values = [token[1].text for diag in labelled_diags for tokens in diag.label.r_group for token in tokens]
+        # gold = ['OCH3', 'CH3']
+        # for x in gold:
+        #     self.assertIn(x, all_detected_r_groups_values)
 
     #
     # def test_ocr_markush_img(self):

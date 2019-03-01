@@ -16,6 +16,10 @@ import logging
 
 log = logging.getLogger(__name__)
 
+import osra_rgroup
+from . import io
+from . import actions
+
 
 def detect_r_group(diag):
     """ Determines whether a label represents an R-Group structure, and if so gives the variable and value
@@ -43,6 +47,25 @@ def detect_r_group(diag):
 
 
     return diag
+
+
+def get_rgroup_smiles(diag, fig):
+    """ Uses modified version of OSRA to get SMILES for multiple """
+
+    # Save a temp image
+    io.imsave('r_group_temp.jpg', actions.crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
+
+    #Format the extracted rgroup
+    osra_input = [{token[0].text: token[1].text} for tokens in diag.label.r_group for token in tokens]
+
+    # Run osra on temp image
+    smiles = osra_rgroup.hack_osra_process_image(osra_input, input_file="r_group_temp.jpg")
+
+    io.imdel('r_group_temp.jpg')
+
+    smiles = [smile.replace('\n', '') for smile in smiles]
+
+    return smiles
 
 
 # def tokenize_commas(sentences):
