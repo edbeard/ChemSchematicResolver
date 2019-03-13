@@ -200,6 +200,7 @@ class Label(Panel):
     def __init__(self, *args):
         super(Label, self).__init__(*args)
         self.r_group = []
+        self.values = []
 
     @property
     def text(self):
@@ -210,16 +211,18 @@ class Label(Panel):
         self._text = text
 
     def r_group(self):
-        """ List of lists of tuples containing variable-value pairs.
+        """ List of lists of tuples containing variable-value-label triplets.
             Each list represents a particular combination of chemicals yielding a unique compound.
+
+            :param : List(str,str,List(str)) : A list of variable-value pairs and their list ofcandidate labels
         """
         return self.r_group
 
 
-    def add_r_group_variables(self, var_value_tuples):
+    def add_r_group_variables(self, var_value_label_tuples):
         """ Updates the R-groups for this label."""
 
-        self.r_group.append(var_value_tuples)
+        self.r_group.append(var_value_label_tuples)
 
 
 

@@ -34,11 +34,13 @@ from chemdataextractor.doc.text import Sentence
 
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans
+# TODO : rename after removing cmd line read diagram logic
+import osra_rgroup
 from matplotlib import pyplot as plt
 
 from .model import Panel, Diagram, Label, Rect, Graph
 from .ocr import get_text, get_lines, get_sentences, PSM, LABEL_WHITELIST
-from .io import img_as_pil , imsave # for debugging
+from .io import img_as_pil , imsave, imdel, imread # for debugging
 from .parse import LabelParser
 
 log = logging.getLogger(__name__)
@@ -99,6 +101,8 @@ def convert_greyscale(img):
     if img.ndim == 3 and img.shape[-1] in [3, 4]:
         rgb_img = copy.deepcopy(img)
         grey_img = rgb2gray(img)
+    else:
+        grey_img = img
 
     return grey_img
 
@@ -689,6 +693,26 @@ def read_diagram(fig, diag):
         return '', ''
     else:
         return results[0], results[1][:-2]
+
+def read_diagram_pyosra(diag, fig):
+    """ Converts a diagram to SMILES using PYOSRA"""
+
+    # Save a temp image
+    temp_img_fname = 'osra_temp.jpg'
+    imsave(temp_img_fname, crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
+
+    # Run osra on temp image
+    smile = osra_rgroup.read_diagram(temp_img_fname)
+
+    imdel(temp_img_fname)
+
+    smile = smile.replace('\n', '')
+
+    return smile
+
+
+
+
 
 def get_diag_and_label(img):
     """ Segments images into diagram-label pairs

@@ -503,23 +503,27 @@ class TestSystem(unittest.TestCase):
         """ Tests the R-group detection, recognition and resoltuion"""
 
 
+        r_smiles = []
         smiles = []
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
+        fig_copy = copy.deepcopy(fig) # Unreferenced copy for display
         raw_fig = csde.io.imread(test_diag, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
+        bin_fig = csde.actions.binarize(bin_fig, threshold=0.7)
 
-        panels = csde.actions.segment(bin_fig)
+
+        panels = csde.actions.segment(fig)
         labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, bin_fig)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
-        ax.imshow(fig.img)
+        ax.imshow(fig_copy.img)
 
         labelled_diags = csde.actions.label_diags(diags, labels)
 
@@ -540,7 +544,7 @@ class TestSystem(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            diag.label = csde.actions.read_label(fig, label)
+            diag.label = csde.actions.read_label(fig_copy, label)
             diag = csde.r_group.detect_r_group(diag)
 
             print(diag.label.r_group)
@@ -552,40 +556,150 @@ class TestSystem(unittest.TestCase):
             # print("Label %s : %s " % (label.tag, labels_text))
 
             if diag.label.r_group != [[]]:
-                smile = csde.r_group.get_rgroup_smiles(diag, fig)
+                r_smiles_group = csde.r_group.get_rgroup_smiles(diag, raw_fig)
+                for smile in r_smiles_group:
+                    r_smiles.append(smile)
+
+            else:
+
+                smile = csde.actions.read_diagram_pyosra(diag, raw_fig)
                 smiles.append(smile)
-                print(smile)
 
         ax.set_axis_off()
         plt.show()
 
+        total_smiles = r_smiles + smiles
 
-
-        return smiles
+        return total_smiles
 
 
     def test_r_group_resolution1(self):
         smiles = self.do_r_group_resolution('S014372081630119X_gr1.jpg')
         print('extracted Smiles are : %s' % smiles)
 
-        gold = [['c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(C)cc4)c4ccc(cc4)C)cc2)cccc3)cc1)c1ccc(C)cc1)C',
-                'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(OC)cc4)c4ccc(cc4)OC)cc2)cccc3)cc1)c1ccc(OC)cc1)OC']]
+        gold = ['c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(C)cc4)c4ccc(cc4)C)cc2)cccc3)cc1)c1ccc(C)cc1)C',
+                'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(OC)cc4)c4ccc(cc4)OC)cc2)cccc3)cc1)c1ccc(OC)cc1)OC',
+                'c1c2n(c3c(c2ccc1)cc(cc3)/C=C/c1ccc(/C=C/c2ccc3n(c4ccccc4c3c2)CC)c2c1cccc2)CC'
+                ]
 
         self.assertEqual(gold, smiles)
 
-        #osra_rgroup.hack_osra_process_image([{"R":"CH3"}, {"R":"OCH3"}])
+    def test_r_group_resolution2(self):
+        smiles = self.do_r_group_resolution('S014372081630122X_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
 
-        # all_detected_r_groups_values = [token[1].text for diag in labelled_diags for tokens in diag.label.r_group for token in tokens]
-        # gold = ['OCH3', 'CH3']
-        # for x in gold:
-        #     self.assertIn(x, all_detected_r_groups_values)
+        # TODO : Try this with tesseract (label resolution is poor)
 
-    #
-    # def test_ocr_markush_img(self):
-    #     labels = self.do_ocr('S0143720816301115_r75.jpg')
-    #     gold = [[['PI1-AP']], [['PI1-TMP']], [['PIl-SZ']]]
-    #     for x in gold:
-    #         self.assertIn(x, labels)
+        gold = [
+            ['c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(C)cc4)c4ccc(cc4)C)cc2)cccc3)cc1)c1ccc(C)cc1)C',
+             'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(OC)cc4)c4ccc(cc4)OC)cc2)cccc3)cc1)c1ccc(OC)cc1)OC']]
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution5(self):
+        smiles = self.do_r_group_resolution('S0143720816300201_sc2.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1(N(C)C)ccc(cc1)C=C(C#N)C#N', 'n1(c2c(c3c1cccc3)cc(C=C(C#N)C#N)cc2)*',
+                                 'c1c2Cc3cc(C=C(C#N)C#N)ccc3c2ccc1', 'o1cccc1C=C(C#N)C#N', 'n1(cccc1C=C(C#N)C#N)C',
+                                 's1cccc1C=C(C#N)C#N', 'C[Fe]C1(C*CCC1)C', 'c1ccc(s1)c1sc(cc1)C=C(C#N)C#N']
+
+        self.assertEqual(gold, smiles)
+
+
+    def test_r_group_resolution6(self):
+        smiles = self.do_r_group_resolution('S0143720816300274_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['CC(c1ccc(c2sc(c3c2[nH]c(n3)c2ccc(c3ccc(/C=C(\\C#N)/C(=O)O)cc3)cc2)c2ccc(C(C)(C)C)cc2)cc1)(C)C',
+                                'CC(c1ccc(c2sc(c3nc([nH]c23)c2ccc(c3sc(/C=C(\\C#N)/C(=O)O)cc3)cc2)c2ccc(C(C)(C)C)cc2)cc1)(C)C',
+                                'CC(c1ccc(c2sc(c3c2[nH]c(n3)c2sc(cc2)c2ccc(/C=C(\\C#N)/C(=O)O)s2)c2ccc(C(C)(C)C)cc2)cc1)(C)C',
+                                'c1(cccs1)c1sc(c2nc(n(c12)CCCC)c1ccc(c2ccc(/C=C(\\C#N)/C(=O)O)cc2)cc1)c1sccc1',
+                                'c1cc(sc1)c1sc(c2c1n(CCCC)c(n2)c1ccc(c2ccc(/C=C(\\C#N)/C(=O)O)s2)cc1)c1sccc1',
+                                'c1(cccs1)c1sc(c2nc(n(c12)CCCC)c1sc(cc1)c1sc(cc1)/C=C(\\C#N)/C(=O)O)c1sccc1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution7(self):
+        smiles = self.do_r_group_resolution('S0143720816300286_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1(N(C)C)ccc(cc1)C=C(C#N)C#N', 'n1(c2c(c3c1cccc3)cc(C=C(C#N)C#N)cc2)*',
+                'c1c2Cc3cc(C=C(C#N)C#N)ccc3c2ccc1', 'o1cccc1C=C(C#N)C#N', 'n1(cccc1C=C(C#N)C#N)C',
+                's1cccc1C=C(C#N)C#N', 'C[Fe]C1(C*CCC1)C', 'c1ccc(s1)c1sc(cc1)C=C(C#N)C#N']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution8(self):
+        smiles = self.do_r_group_resolution('S0143720816300419_sc1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c12c3ccc(cc3C(=O)c2cc(cc1)c1ccc(C(=O)C)cc1)c1ccc(C(=O)C)cc1', 'c12c3c(C(=O)c2cc(c2ccccc2)cc1)cc(c1ccccc1)cc3',
+                'c12c3c(C(=O)c2cc(cc1)c1ccc(C(=O)OC)cc1)cc(c1ccc(C(=O)OC)cc1)cc3',
+                'c12c3c(C(=O)c2cc(cc1)c1ccc(C=O)cc1)cc(c1ccc(C=O)cc1)cc3']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution9(self):
+        smiles = self.do_r_group_resolution('S0143720816300559_sc2.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1ccc2nc(oc2c1)c1c(O)c(O)c(c2oc3c(n2)cccc3)s1','c1ccc2c(c1)nc(o2)c1c(O)c(OCC)c(c2oc3c(n2)cccc3)s1',
+                'c1ccc2c(c1)nc(o2)c1c(OCC)c(OCC)c(c2oc3c(n2)cccc3)s1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution10(self):
+        smiles = self.do_r_group_resolution('S0143720816300821_gr2.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1c2C(=O)c3ccc(c(Nc4cc(c(N)c5C(=O)c6c(C(=O)c45)cccc6)C)c3C(=O)c2ccc1)C',
+                'c1(ccccc1)Nc1c2C(=O)c3ccccc3C(=O)c2c(Nc2cc(c(N)c3C(=O)c4c(C(=O)c23)cccc4)C)c(C)c1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution11(self):
+        smiles = self.do_r_group_resolution('S0143720816300900_gr2.jpg')
+
+        # TODO : Currently broken. Likely due to difficul-to-parse + and - signs in circles
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1c2C(=O)c3ccc(c(Nc4cc(c(N)c5C(=O)c6c(C(=O)c45)cccc6)C)c3C(=O)c2ccc1)C',
+                'c1(ccccc1)Nc1c2C(=O)c3ccccc3C(=O)c2c(Nc2cc(c(N)c3C(=O)c4c(C(=O)c23)cccc4)C)c(C)c1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution12(self):
+        # TODO : This diagram still fails in resolving the : in the label of R-group diagram
+        smiles = self.do_r_group_resolution('S0143720816301115_r75.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1c2C(=O)c3ccc(c(Nc4cc(c(N)c5C(=O)c6c(C(=O)c45)cccc6)C)c3C(=O)c2ccc1)C',
+                'c1(ccccc1)Nc1c2C(=O)c3ccccc3C(=O)c2c(Nc2cc(c(N)c3C(=O)c4c(C(=O)c23)cccc4)C)c(C)c1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution13(self):
+        smiles = self.do_r_group_resolution('S0143720816301681_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1c2C(=O)c3ccc(c(Nc4cc(c(N)c5C(=O)c6c(C(=O)c45)cccc6)C)c3C(=O)c2ccc1)C',
+                'c1(ccccc1)Nc1c2C(=O)c3ccccc3C(=O)c2c(Nc2cc(c(N)c3C(=O)c4c(C(=O)c23)cccc4)C)c(C)c1']
+
+        self.assertEqual(gold, smiles)
+
+    def test_r_group_resolution_var_var(self):
+        """ test a document case where variables are set equal to each other"""
+
+        smiles = self.do_r_group_resolution('S0143720816301115_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = ['c1c2C(=O)c3ccc(c(Nc4cc(c(N)c5C(=O)c6c(C(=O)c45)cccc6)C)c3C(=O)c2ccc1)C',
+                'c1(ccccc1)Nc1c2C(=O)c3ccccc3C(=O)c2c(Nc2cc(c(N)c3C(=O)c4c(C(=O)c23)cccc4)C)c(C)c1']
+
+       # self.assertEqual(gold, smiles)
+
+
 
     def do_osra(self, filename):
         """ Tests the OSRA chemical diagram recognition """
