@@ -43,4 +43,16 @@ class TestRgroup(unittest.TestCase):
         result = self.do_resolve(comp)
         self.assertEqual(gold, result)
 
+    def test_resolve_structure_4(self):
+
+        comp = 'Hexyl'
+        gold = ''
+        result = self.do_resolve(comp)
+        self.assertEqual(gold, result)
+
+    def test_standardize_values_alkyls(self):
+
+        var_value_example = [('R', 'Methyl', [''])]
+        result = r_group.standardize_values(var_value_example)
+        print(result)
 

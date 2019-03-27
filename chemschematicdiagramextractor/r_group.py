@@ -14,8 +14,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 
-log = logging.getLogger(__name__)
-
 import osra_rgroup
 import cirpy
 import itertools
@@ -24,7 +22,9 @@ from . import io
 from . import actions
 from .ocr import ASSIGNMENT, SEPERATORS, CONCENTRATION
 
-BLACKLIST = ASSIGNMENT + SEPERATORS + CONCENTRATION
+log = logging.getLogger(__name__)
+
+BLACKLIST_CHARS = ASSIGNMENT + SEPERATORS + CONCENTRATION
 
 
 def detect_r_group(diag):
@@ -35,11 +35,11 @@ def detect_r_group(diag):
 
     sentences = diag.label.text
     for sentence in sentences:
-        var_variable_pairs = []
+        var_value_pairs = []
         for i, token in enumerate(sentence.tokens):
             if token.text is '=':
                 print('Found R-Group descriptor %s' % token.text)
-                if i > 0 :
+                if i > 0:
                     print('Variable candidate is %s' % sentence.tokens[i-1] )
                 if i < len(sentence.tokens):
                     print('Value candidate is %s' % sentence.tokens[i+1])
@@ -47,22 +47,32 @@ def detect_r_group(diag):
                 if 0 < i < len(sentence.tokens):
                     variable = sentence.tokens[i - 1]
                     value = sentence.tokens[i + 1]
-                    var_variable_pairs.append((variable, value))
+                    var_value_pairs.append((variable, value))
 
-        var_variable_label_triplets = get_label_candiates(sentence, var_variable_pairs)
+            elif token.text == 'or' and var_value_pairs:
+                print('"or" keyword detected. Assigning value to previous R-group variable...')
 
-                    # TODO : Add logic here to detect all other alphanumerics using re package
-        diag.label.add_r_group_variables(var_variable_label_triplets)
+                # Identify the most recent var_value pair
+                variable = var_value_pairs[-1][0]
+                value = sentence.tokens[i + 1]
+                var_value_pairs.append((variable, value))
+
+        var_value_label_triplets = get_label_candiates(sentence, var_value_pairs)
+
+        var_value_label_triplets = standardize_values(var_value_label_triplets)
+
+        # TODO : Add logic here to detect all other alphanumerics using re package
+        diag.label.add_r_group_variables(var_value_label_triplets)
 
     return diag
 
 
-def get_label_candiates(sentence, var_variable_pairs, blacklist=BLACKLIST):
+def get_label_candiates(sentence, var_value_pairs, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
     ''' Extracts label candidates from a sentence that ontains r-groups'''
 
-    candidates = [token for token in sentence.tokens if token.text not in blacklist]
+    candidates = [token for token in sentence.tokens if token.text not in blacklist_chars]
     vars_and_values = []
-    for var, value in var_variable_pairs:
+    for var, value in var_value_pairs:
         vars_and_values.append(var)
         vars_and_values.append(value)
 
@@ -70,7 +80,7 @@ def get_label_candiates(sentence, var_variable_pairs, blacklist=BLACKLIST):
 
     output = []
 
-    for var, value in var_variable_pairs:
+    for var, value in var_value_pairs:
         label_cands = []
         for token in candidates:
             if token not in vars_and_values:
@@ -142,4 +152,21 @@ def resolve_structure(compound):
     smiles = cirpy.resolve(compound, 'smiles')
 
     return smiles
+
+
+def standardize_values(var_value_label_triplets):
+    """ Converts values to a format compatible with pyosra"""
+
+    # List of tuples pairing multiple definitions to the appropriate SMILES string
+    alkyls = [('C', ['methyl']),
+              ('CC', ['ethyl'])]
+
+    for triplet in var_value_label_triplets:
+        value = triplet[1]
+        for alkyl in alkyls:
+            if value.lower() in alkyl[1]:
+                triplet[1] = alkyl[0]
+
+    return var_value_label_triplets
+
 
