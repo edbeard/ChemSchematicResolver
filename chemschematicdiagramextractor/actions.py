@@ -164,6 +164,8 @@ def segment(fig):
 def classify_kmeans(panels):
     ''' Takes the input images, then classifies through k means cluster of the panel area '''
 
+    if len(panels) <= 1:
+        raise Exception('Only one panel detected. Cannot cluster')
     return get_labels_and_diagrams_k_means_clustering(panels)
 
 def preprocessing(labels, diags, fig):
@@ -767,7 +769,6 @@ def get_img_boundaries(img, left=None, right=None, top=None, bottom=None):
 
     # TODO : Use this inside crop
     height, width = img.shape[:2]
-
 
     left = max(0, 0 if left is None else left )
     right = min(width, width if right is None else right)

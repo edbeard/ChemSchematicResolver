@@ -22,9 +22,10 @@ import itertools
 
 from . import io
 from . import actions
-from .ocr import ASSIGNMENT, SEPERATORS
+from .ocr import ASSIGNMENT, SEPERATORS, CONCENTRATION
 
-BLACKLIST = ASSIGNMENT + SEPERATORS
+BLACKLIST = ASSIGNMENT + SEPERATORS + CONCENTRATION
+
 
 def detect_r_group(diag):
     """ Determines whether a label represents an R-Group structure, and if so gives the variable and value
@@ -53,13 +54,18 @@ def detect_r_group(diag):
                     # TODO : Add logic here to detect all other alphanumerics using re package
         diag.label.add_r_group_variables(var_variable_label_triplets)
 
-
     return diag
+
 
 def get_label_candiates(sentence, var_variable_pairs, blacklist=BLACKLIST):
     ''' Extracts label candidates from a sentence that ontains r-groups'''
 
     candidates = [token for token in sentence.tokens if token.text not in blacklist]
+    vars_and_values = []
+    for var, value in var_variable_pairs:
+        vars_and_values.append(var)
+        vars_and_values.append(value)
+
     print(candidates)
 
     output = []
@@ -67,14 +73,12 @@ def get_label_candiates(sentence, var_variable_pairs, blacklist=BLACKLIST):
     for var, value in var_variable_pairs:
         label_cands = []
         for token in candidates:
-            if token.text != var.text and token.text != value.text:
+            if token not in vars_and_values:
                 label_cands.append(token)
 
         output.append((var, value, label_cands))
 
-
     return output
-
 
 
 def get_rgroup_smiles(diag, fig, cleanchars='()'):
@@ -84,6 +88,7 @@ def get_rgroup_smiles(diag, fig, cleanchars='()'):
     io.imsave('r_group_temp.jpg', actions.crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
 
     osra_input = []
+    label_cands = []
     smiles = []
 
     #Format the extracted rgroup
@@ -91,11 +96,6 @@ def get_rgroup_smiles(diag, fig, cleanchars='()'):
         token_dict = {}
         for token in tokens:
 
-            # print('Trying to resolve value candidate...')
-            # resolved_value = resolve_structure(token[1].text)
-            # if resolved_value is not None:
-            #     print('resolved successfully')
-            #     token[1].text = resolved_value
 
             #value = clean_chars(token[1].text, cleanchars)
             token_dict[token[0].text] = token[1].text
@@ -107,8 +107,8 @@ def get_rgroup_smiles(diag, fig, cleanchars='()'):
                 token_dict[a] = token_dict[b]
 
 
-
         osra_input.append(token_dict)
+        label_cands.append(tokens[0][2])
         print(" Smiles resolved were:  %s" % smiles)
 
     # TODO : Attempt to resolve compound values using cirpy / OPSIN
@@ -120,7 +120,12 @@ def get_rgroup_smiles(diag, fig, cleanchars='()'):
 
     smiles = [smile.replace('\n', '') for smile in smiles]
 
-    return smiles
+    labels_and_smiles = []
+    for i, smile in enumerate(smiles):
+        labels_and_smiles.append((label_cands[i], smile))
+
+    return labels_and_smiles
+
 
 def clean_chars(value, cleanchars):
     """ Remove chars for cleaning"""
@@ -138,9 +143,3 @@ def resolve_structure(compound):
 
     return smiles
 
-# def tokenize_commas(sentences):
-#     """ Takes a list of senteces, and reformats to include commas in tokenization"""
-#
-#     for sentence in sentences:
-#         for i, token in enumerate(sentence):
-#             if ',' in token.text:
