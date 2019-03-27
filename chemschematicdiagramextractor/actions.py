@@ -15,17 +15,12 @@ from __future__ import unicode_literals
 import logging
 
 import numpy as np
-from PIL import Image, ImageDraw
 from skimage.color import rgb2gray
 from skimage import morphology
-from skimage.feature import canny
-import skimage.io as skio
-from skimage.filters import sobel
 from skimage.util import pad, crop
 from skimage.util import crop as crop_skimage
-from skimage.morphology import watershed, closing, binary_closing, disk, square, rectangle
+from skimage.morphology import binary_closing, disk
 from skimage.measure import regionprops
-import tempfile
 import subprocess
 import os
 import itertools
@@ -36,14 +31,37 @@ from scipy import ndimage as ndi
 from sklearn.cluster import KMeans
 # TODO : rename after removing cmd line read diagram logic
 import osra_rgroup
-from matplotlib import pyplot as plt
 
 from .model import Panel, Diagram, Label, Rect, Graph
-from .ocr import get_text, get_lines, get_sentences, PSM, LABEL_WHITELIST
-from .io import img_as_pil , imsave, imdel, imread # for debugging
+from .ocr import get_text, get_sentences, PSM, LABEL_WHITELIST
+from .io import imsave, imdel
 from .parse import LabelParser
 
 log = logging.getLogger(__name__)
+
+
+def crop(img, left=None, right=None, top=None, bottom=None):
+    """Crop image.
+
+    Automatically limits the crop if bounds are outside the image.
+
+    :param numpy.ndarray img: Input image.
+    :param int left: Left crop.
+    :param int right: Right crop.
+    :param int top: Top crop.
+    :param int bottom: Bottom crop.
+    :return: Cropped image.
+    :rtype: numpy.ndarray
+    """
+    height, width = img.shape[:2]
+
+    left = max(0, 0 if left is None else left )
+    right = min(width, width if right is None else right)
+    top = max(0, 0 if top is None else top)
+    bottom = min(height, height if bottom is None else bottom)
+    img = img[top: bottom, left : right ]
+    return img
+
 
 def binarize(fig, threshold=0.85):
     """ Converts image to binary
@@ -68,31 +86,30 @@ def binarize(fig, threshold=0.85):
     # Binarize with threshold (default of 0.9 empirically determined)
     binary = img < threshold
     fig.img = binary
-
     return fig
 
 
-def binary_close(fig, size=20, ratio=2):
+def binary_close(fig, size=20):
     """ Joins unconnected pixel by dilation and erosion"""
     selem = disk(size)
-    # width = size*ratio
-    # selem = rectangle(width, size)
 
     fig.img = pad(fig.img, size, mode='constant')
     fig.img = binary_closing(fig.img, selem)
     fig.img = crop_skimage(fig.img, size)
-
     return fig
+
 
 def binary_floodfill(fig):
     """ Converts all pixels inside closed contour to 1"""
     fig.img = ndi.binary_fill_holes(fig.img)
     return fig
 
+
 def binary_tag(fig):
     """ Tag connected regions with pixel value of 1"""
     fig.img, no_tagged = ndi.label(fig.img)
     return fig, no_tagged
+
 
 def convert_greyscale(img):
     """ Converts to greyscale if RGB"""
@@ -103,8 +120,8 @@ def convert_greyscale(img):
         grey_img = rgb2gray(img)
     else:
         grey_img = img
-
     return grey_img
+
 
 def get_bounding_box(fig):
     """ Gets the bounding box of each segment"""
@@ -113,8 +130,8 @@ def get_bounding_box(fig):
     for region in regions:
         y1,x1,y2,x2 = region.bbox
         panels.append(Panel(x1,x2,y1,y2, region.label - 1)) # Sets tags to start from 0
-
     return panels
+
 
 def get_repeating_unit(panels, fig):
     """ Identifies 'n' labels as repeating unit identifiers"""
@@ -134,15 +151,16 @@ def get_repeating_unit(panels, fig):
 
     panels = [panel for panel in panels if panel not in ns]
     panels = relabel_panels(panels)
-
     return panels
 
 
 def relabel_panels(panels):
+    """ Relabel panels"""
+
     for i, panel in enumerate(panels):
         panel.tag = i
-
     return panels
+
 
 def segment(fig):
     """ Segments image """
@@ -151,35 +169,30 @@ def segment(fig):
 
     closed_fig = binary_close(bin_fig)
 
-    # out_fig, ax = plt.subplots(figsize=(10, 6))
-    # ax.imshow(closed_fig.img)
-    # plt.show()
-
     fill_img = binary_floodfill(closed_fig)
     tag_img, no_tagged = binary_tag(fill_img)
     panels = get_bounding_box(tag_img)
-
     return panels
 
+
 def classify_kmeans(panels):
-    ''' Takes the input images, then classifies through k means cluster of the panel area '''
+    """Takes the input images, then classifies through k means cluster of the panel area"""
 
     if len(panels) <= 1:
         raise Exception('Only one panel detected. Cannot cluster')
     return get_labels_and_diagrams_k_means_clustering(panels)
 
+
 def preprocessing(labels, diags, fig):
-    ''' Preprocessing steps, expand as needed'''
+    """Preprocessing steps, expand as needed"""
 
     # Pre-processing filtering
     # TODO : Fix the repeating unit logic to work under new, early classification system
     # panels = get_repeating_unit(panels, fig)
 
-
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
-    label_candidates_fully_merged = merge_labels_vertically_test(label_candidates_horizontally_merged)
+    label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
-
     return labels_converted, diags
 
 
@@ -190,7 +203,7 @@ def classify(panels):
     labels = []
 
     areas = [panel.area for panel in panels]
-    mean = np.mean(areas) # Threshold for classification
+    mean = np.mean(areas)# Threshold for classification
     thresh = mean - mean*0.5
 
     for panel in panels:
@@ -199,8 +212,8 @@ def classify(panels):
         else:
             labels.append(Label(panel.left, panel.right, panel.top, panel.bottom, panel.tag))
 
-
     return diags, labels
+
 
 def kruskal(panels):
     """ Runs Kruskals algorithm on input Panel objects"""
@@ -212,12 +225,13 @@ def kruskal(panels):
     sorted_edges = g.kruskal()
     return sorted_edges
 
+
 def assign_labels_diagram_pairs_after_kmeans(labels, diagrams):
-    ''' Assigns label-digaram pairs after doing kmeans to identify'''
+    """Assigns label-digaram pairs after doing kmeans to identify"""
+
 
 def classify_kruskal_after_kmeans(labels, diagrams):
-    ''' Pairs up diagrams and pairs after clustering via kmeans'''
-
+    """Pairs up diagrams and pairs after clustering via kmeans"""
 
     ordered_diags = []
     ordered_labels = []
@@ -251,7 +265,7 @@ def classify_kruskal_after_kmeans(labels, diagrams):
 
     print('Pairs that were assigned')
     for i, diag in enumerate(ordered_diags):
-        print (diag, labels[i])
+        print(diag, labels[i])
         diag.label = labels[i]
 
     return ordered_diags
@@ -259,14 +273,13 @@ def classify_kruskal_after_kmeans(labels, diagrams):
 
 def get_threshold(panels):
     """ Get's a basic threshold value from area"""
-
     return 1.5 * np.mean([panel.area for panel in panels])
 
 
 def get_labels_and_diagrams_k_means_clustering(panels):
     """ Splits into labels and diagrams using kmeans clustering of area"""
 
-    all_areas =  np.array([panel.area for panel in panels])
+    all_areas = np.array([panel.area for panel in panels])
     km = KMeans(n_clusters=2)
     clusters = km.fit(all_areas.reshape(-1,1))
 
@@ -289,7 +302,6 @@ def get_labels_and_diagrams_k_means_clustering(panels):
     # Convert to appropriate types
     labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels]
     diags = [Diagram(diag.left, diag.right, diag.top, diag.bottom, diag.tag) for diag in diags]
-
     return labels, diags
 
 
@@ -297,7 +309,6 @@ def get_labels_and_diagrams_from_threshold(panels):
     """ Separates into diagrams and lables based on a threshold"""
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
-    all_areas =  [panel.area for panel in panels]
     area_mean = np.mean([panel.area for panel in panels])
     area_std = np.std([panel.area for panel in panels])
 
@@ -305,7 +316,7 @@ def get_labels_and_diagrams_from_threshold(panels):
     labels = [panel for panel in panels if panel.area < (area_mean - 0.25*area_std)]
     diagrams = [panel for panel in panels if panel.area >= (area_mean - 0.25*area_std)]
 
-    return labels, diagrams  # Threshold for classification
+    return labels, diagrams
 
 
 def get_threshold_width_height(panels):
@@ -352,12 +363,11 @@ def classify_kruskal(panels):
             labels.append(p1)
             used_tags.extend([p1.tag, p2.tag])
         elif p1.area < thresh and p2.area < thresh:
+            print('Error - both panels are below the threshold')
 
-            print('broken')
-
-    print('Pairs that were assigned')
+    print('Assigned Pairs')
     for i, diag in enumerate(diags):
-        print (diag, labels[i])
+        print(diag, labels[i])
 
     return diags, labels
 
@@ -377,7 +387,7 @@ def label_kruskal(diags, labels):
 
 
 def order_by_area(panels):
-    ''' Returns a list of panel objects, ordered by area'''
+    """ Returns a list of panel objects ordered by area"""
 
     def get_area(panel):
         return panel.area
@@ -385,13 +395,15 @@ def order_by_area(panels):
     panels.sort(key=get_area)
     return panels
 
+
 def find_next_merge_candidate(thresh, ordered_panels):
-    '''
+    """
     Iterates through all candidate panels, merging when criteria is matched
     :param thresh: Used to determine that a panel constitutes a label
     :param ordered_panels: an ordered list of all panels in the image
     :return:
-    '''
+    """
+
     for a, b in list(set(itertools.combinations(ordered_panels, 2))):
 
         # Check panels lie in roughly the same line, that they are of label size and similar height
@@ -413,7 +425,7 @@ def find_next_merge_candidate(thresh, ordered_panels):
 
 
 def is_unque_panel(a, b):
-    ''' Checks whether a panel is unique'''
+    """Checks whether a panel is unique"""
 
     if a.left == b.left and a.right == b.right \
             and a.top == b.top and a.bottom == b.bottom:
@@ -423,7 +435,7 @@ def is_unque_panel(a, b):
 
 
 def merge_loop_horizontal(panels):
-    ''' Goes through the loop for merging.'''
+    """Goes through the loop for merging."""
 
     output_panels = []
     blacklisted_panels = []
@@ -452,15 +464,13 @@ def merge_loop_horizontal(panels):
             output_panels.append(panel)
 
     output_panels = relabel_panels(output_panels)
-
     return output_panels, done
 
 
 def merge_loop_vertical(panels):
-
+    """ Merding vertical panels within threshold"""
     output_panels = []
     blacklisted_panels = []
-    #done = True
 
     # Merging labels that are in close proximity vertically
     for a, b in itertools.combinations(panels, 2):
@@ -472,7 +482,6 @@ def merge_loop_vertical(panels):
             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
             output_panels.append(merged_panel)
             blacklisted_panels.extend([a, b])
-           # done = False
 
     for panel in panels:
         if panel not in blacklisted_panels:
@@ -481,7 +490,8 @@ def merge_loop_vertical(panels):
     output_panels = relabel_panels(output_panels)
 
     print(output_panels)
-    return output_panels#, done
+    return output_panels
+
 
 def merge_overlap(a, b):
     """ Checks whether panels a and b overlap. If they do, returns new merged panel"""
@@ -489,8 +499,9 @@ def merge_overlap(a, b):
     if a.overlaps(b) or b.overlaps(a):
         return merge_rect(a, b)
 
+
 def get_one_to_merge(all_combos, panels):
-    ''' Returns the updated panel list once a panel needs to be merged'''
+    """Returns the updated panel list once a panel needs to be merged"""
 
     for a, b in all_combos:
 
@@ -504,13 +515,12 @@ def get_one_to_merge(all_combos, panels):
 
     return panels, True
 
+
 def convert_panels_to_labels(panels):
-    """ Converts a list of panels to a list of lables"""
+    """ Converts a list of panels to a list of labels"""
 
     # TODO : Implement this whenever this conversion is made
-
     return [Label(panel.left, panel.right, panel.top, panel.bottom, panel.tag) for panel in panels]
-
 
 
 def merge_all_overlaps(panels):
@@ -537,65 +547,32 @@ def merge_label_horizontally(merge_candidates):
         merge_candidates, done = merge_loop_horizontal(ordered_panels)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
-
     return merge_candidates
 
-def merge_labels_vertically_test(merge_candidates):
-    """ Try to merge vertically using brute force method"""
 
-    done = False
+def merge_labels_vertically(merge_candidates):
+    """ Try to merge vertically using brute force method"""
 
     # Identifies panels within horizontal merging criteria
     ordered_panels = order_by_area(merge_candidates)
     merge_candidates = merge_loop_vertical(ordered_panels)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
-
     return merge_candidates
-
-
-def merge_labels_vertically(panels):
-    """ Identifies labels to merge from vertical proximity and length"""
-
-    # TODO : Simplify/improve logic : look at horizontal for advice.
-    # TODO : Remove dependence on threshold
-
-    output_panels = []
-    blacklisted_panels = []
-
-
-    # Merging labels that are in close proximity vertically
-    for a, b in itertools.combinations(panels, 2):
-
-        if abs(a.center[0] - b.center[0]) < 1.5 * a.width and abs(a.center[1] - b.center[1]) < 3 * a.height \
-                and abs(a.height - b.height) < 0.3 * a.height and abs(a.width - b.width) < 2 * a.width:
-
-            merged_rect = merge_rect(a, b)
-            merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
-            output_panels.append(merged_panel)
-            blacklisted_panels.extend([a, b])
-
-    for panel in panels:
-        if panel not in blacklisted_panels:
-            output_panels.append(panel)
-
-    output_panels = relabel_panels(output_panels)
-
-    print(output_panels)
-    return output_panels
 
 
 def merge_rect(rect1, rect2):
     """ Merges rectangle with another, such that the bounding box enclose both
 
-    :param Rect other_rect: Another rectangle
-    :return: Merged rectangle"""
+    :param Rect rect1: A rectangle
+    :param Rect rect2: Another rectangle
+    :return: Merged rectangle
+    """
 
     left = min(rect1.left, rect2.left)
     right = max(rect1.right, rect2.right)
     top = min(rect1.top, rect2.top)
     bottom = max(rect1.bottom, rect2.bottom)
-
     return Rect(left, right, top, bottom)
 
 
@@ -609,10 +586,10 @@ def assign_label_to_diag(diag, labels, rate=1):
     """ Iteratively expands the bounding box of diagram until it reaches a label"""
 
     probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
-    found=False
+    found = False
     # TODO : Add thresholds for right, bottom, left and top
 
-    while found==False :
+    while found is False:
         # Increase border value each loop
         probe_rect.right = probe_rect.right + rate
         probe_rect.bottom = probe_rect.bottom + rate
@@ -626,6 +603,7 @@ def assign_label_to_diag(diag, labels, rate=1):
                 diag.label = label
     return diag
 
+
 def read_all_labels(fig, diags):
     """ Reads the values of all labels"""
 
@@ -633,6 +611,7 @@ def read_all_labels(fig, diags):
         diag.label.text = read_label(fig, diag.label)
         print(diag.tag, diag.label.text)
     return diags
+
 
 def read_all_diags(fig, diags):
     """ Resolves all diagrams to smiles"""
@@ -652,7 +631,8 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     :rtype List[List[str]]
     """
 
-    # TODO : Add post-processing check to see if the majority of returned characters wer letters / numbers. If above threshold, redo with changed 'whitelist' characters
+    # TODO : Add post-processing check to see if the majority of returned characters wer letters / numbers.
+    #  If above threshold, redo with changed 'whitelist' characters
     img = convert_greyscale(fig.img)
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
     text = get_text(cropped_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
@@ -664,7 +644,6 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     else:
         tagged_sentences = []
     label.text = tagged_sentences
-
     return label
 
 
@@ -672,9 +651,6 @@ def read_diagram(fig, diag):
     """ Converts diagram to SMILES using OSRA"""
 
     cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
-    res = cropped_img.size
-    # skio.imshow(cropped_img)
-    # plt.show()
 
     # Write crop to temporary file
     temp_name = 'temp.png'
@@ -696,6 +672,7 @@ def read_diagram(fig, diag):
     else:
         return results[0], results[1][:-2]
 
+
 def read_diagram_pyosra(diag, fig):
     """ Converts a diagram to SMILES using PYOSRA"""
 
@@ -709,11 +686,7 @@ def read_diagram_pyosra(diag, fig):
     imdel(temp_img_fname)
 
     smile = smile.replace('\n', '')
-
     return smile
-
-
-
 
 
 def get_diag_and_label(img):
@@ -723,7 +696,8 @@ def get_diag_and_label(img):
     :return: Binary image.
     :rtype: numpy.ndarray
     """
-    num_lbls = 1000
+    num_lbls = 1000 # Arbitrarily large number
+    int_img = None
     while num_lbls > 6: # TO DO : automatically determine 6
         img = morphology.binary_dilation(img, selem=morphology.disk(2))# TODO: Dynamic selem size?
         int_img = img.astype(int)
@@ -731,31 +705,6 @@ def get_diag_and_label(img):
         print(num_lbls)
     return int_img
 
-def crop(img, left=None, right=None, top=None, bottom=None, padding=0):
-    """Crop image.
-
-    Automatically limits the crop if bounds are outside the image.
-
-    :param numpy.ndarray img: Input image.
-    :param int left: Left crop.
-    :param int right: Right crop.
-    :param int top: Top crop.
-    :param int bottom: Bottom crop.
-    :return: Cropped image.
-    :rtype: numpy.ndarray
-    """
-    height, width = img.shape[:2]
-
-    #x_padding = int(np.around(padding))
-    #y_padding = int(np.around(padding))
-
-    left = max(0, 0 if left is None else left )
-    right = min(width, width if right is None else right)
-    top = max(0, 0 if top is None else top)
-    bottom = min(height, height if bottom is None else bottom)
-    img =  img[top: bottom, left : right ]
-    #pad_img = np.pad(img, padding, mode='constant')
-    return img
 
 def get_img_boundaries(img, left=None, right=None, top=None, bottom=None):
     """ Gets the boundaries of a numpy image
@@ -774,5 +723,4 @@ def get_img_boundaries(img, left=None, right=None, top=None, bottom=None):
     right = min(width, width if right is None else right)
     top = max(0, 0 if top is None else top)
     bottom = min(height, height if bottom is None else bottom)
-
     return left, right, top, bottom
