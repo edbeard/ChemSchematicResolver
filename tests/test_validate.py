@@ -15,20 +15,19 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor as csde
+import chemschematicdiagramextractor.validate as val
 import unittest
-import numpy as np
+
 
 class TestValidation(unittest.TestCase):
 
-    # def test_get_pixel_ratio(self):
-    #     # 16 black, 48 white
-    #     img = np.ones((4, 4))
-    #     img = np.pad(img, 2, 'constant')
-    #
-    #     ratio = csde.validate.get_pixel_ratio(img)
-    #     self.assertEqual(ratio, 0.25)
 
     def test_pybel_checks(self):
-        self.assertEqual(csde.validate.pybel_format("&&"), None)
-        self.assertEqual(csde.validate.pybel_format("C1CCCCC1C2CCCCC2"), 'C1CCC(CC1)C1CCCCC1')
+        self.assertEqual(val.pybel_format("&&"), None)
+        self.assertEqual(val.pybel_format("C1CCCCC1C2CCCCC2"), 'C1CCC(CC1)C1CCCCC1')
+
+    def test_remove_false_positives(self):
+
+        self.assertTrue(val.is_false_positive(([], 'C1CCCCC1C2CCCCC2')))
+        self.assertTrue(val.is_false_positive((['3a'], 'C1CC*CC1C2CCCCC2')))
+        self.assertFalse(val.is_false_positive((['3a'], 'C1CCCCC1C2CCCCC2')))

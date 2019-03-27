@@ -11,6 +11,7 @@ Toolkit for extracting diagram-label pairs from schematic chemical diagrams.
 from .io import imread
 from .actions import segment, classify_kmeans, preprocessing, label_diags, read_label, read_diagram_pyosra
 from .r_group import detect_r_group, get_rgroup_smiles
+from .validate import is_false_positive
 
 import copy
 from matplotlib import pyplot as plt
@@ -93,9 +94,12 @@ def extract_diagram(filename, debug=False):
         ax.set_axis_off()
         plt.show()
 
-    # Formatting the ([label candidate], smiles) output
+    total_smiles = smiles + r_smiles
 
-    return smiles + r_smiles
+    # Removing false positives from lack of labels or wildcard smiles
+    output = [smile for smile in total_smiles if is_false_positive(smile) is False]
+
+    return output
 
 
 def get_smiles(diag, fig, smiles, r_smiles):

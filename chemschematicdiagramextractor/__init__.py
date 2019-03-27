@@ -17,11 +17,11 @@ __title__ = 'ChemSchematicDiagramExtractor'
 __version__ = '0.0.1'
 __author__ = 'Ed Beard'
 __email__ = 'ed.beard94@gmail.com'
-__copyright__ = 'Copyright 2018 Ed Beard, All rights reserved.'
+__copyright__ = 'Copyright 2019 Ed Beard, All rights reserved.'
 
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-from . import io, model, actions, ocr, r_group, parse, extract
+from . import io, model, actions, ocr, r_group, parse, extract, validate

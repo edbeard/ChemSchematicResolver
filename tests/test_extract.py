@@ -49,11 +49,10 @@ class TestExtract(unittest.TestCase):
 
     def test_r_group_extract3(self):
 
-        # This one fails because it can't resolve the : symbol correcty.
-        # This means the R-group variable is wrong and that no label is extracted
-        # Can be identified as a FP from * in smile, and lack of label
+        # NB : This test is automatically filtering out the failed R-group resolution from the presence of wildcards
 
-        gold = []
+        gold = [(['107'], 'c1c2ccc3cccc4c3c2c(cc4)cc1/C=N/CCSSCC/N=C/c1cc2ccc3cccc4ccc(c1)c2c34'),
+                (['106'], 'c1c2ccc3cc(/C=N/c4ccccc4O)c(O)c4c3c2c(cc1)cc4')]
 
         self.do_extract_small('S0143720816301115_r75.jpg', gold)
 

@@ -4,7 +4,7 @@ Image processing validation metrics
 
 ========
 
-A toolkit of image processing actions for segmentation
+A toolkit of validation metrics for determining reliability of output
 
 """
 
@@ -14,10 +14,29 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 
-from chemschematicdiagramextractor import actions
+from .actions import crop
 import numpy as np
 import re
-import pybel
+#import pybel
+
+
+def is_false_positive(label_smile_tuple):
+    """ Identifies failures from absernce of labels and incomplete / invalid smiles
+
+    :rtype bool
+    :returns : True if result is a false positive
+    """
+
+    label_candidates, smile = label_smile_tuple[0], label_smile_tuple[1]
+    # Remove results without a label
+    if len(label_candidates) == 0:
+        return True
+
+    # Remove results containing the wildcard character in the SMILE
+    if '*' in smile:
+        return True
+
+    return False
 
 
 def pixel_ratio(fig, diag):
@@ -26,7 +45,7 @@ def pixel_ratio(fig, diag):
     :param numpy.ndarray img: Input image
     """
 
-    cropped_img = actions.crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10)
+    cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10)
     ones = np.count_nonzero(cropped_img)
     all_pixels = np.size(cropped_img)
     return ones / all_pixels
@@ -52,7 +71,7 @@ def diagram_to_image_area_ratio(fig, diags):
 def avg_diagram_area_to_image_area(fig, diags):
     """ Calculate ratio of average diagram area to total image area"""
 
-    cropped_diags_img = [actions.crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10) for diag in diags]
+    cropped_diags_img = [crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10) for diag in diags]
     diags_size = [img.size for img in cropped_diags_img]
     avg_diag_size = sum(diags_size) / len(diags_size)
     return avg_diag_size / fig.img.size
