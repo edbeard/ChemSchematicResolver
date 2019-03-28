@@ -82,10 +82,15 @@ class TestExtract(unittest.TestCase):
 
     def test_r_group_diag_2(self):
 
-        # Extraction of the R-group for diagram B - need to add logic for the 'or' identification
-        # Also need t check that Octyl and Hexyl can be converted into the Rgroup - might need to try using CIRPY
+        # Octyl and Hectyl resolved correctly. NB the smiles are still wrong though due to OSRA failing
+        # Need to improve the relative label-detection as well : at the moment it's just returning all candidates
 
-        gold = []
+        gold = [(['A'],
+                'c1(ccc(s1)c1cc(F)c(c2cc3S4(c5c(c3s2)sc(c5)c2c([F]CC(C4)CCCC)cc(c3sc(c4ccc(CCCCCC)s4)cc3)c3nsnc23)CC(CC)CCCC)c2nsnc12)c1sc(CCCCCC)cc1'),
+                (['1'],
+                'N1(C(=O)c2c(C1=O)ccc(c1sc(c3cc(F)c(c4cc5S6(c7c(c5s4)sc(c7)c4c([F]CC(C6)CCCC)cc(c5sc(cc5)c5ccc6C(=O)N(C(=O)c6c5)CCCCCCCC)c5nsnc45)CC(CC)CCCC)c4nsnc34)cc1)c2)CCCCCCCC'),
+                (['2'],
+                'N1(C(=O)c2c(C1=O)ccc(c1sc(c3cc(F)c(c4cc5S6(c7c(c5s4)sc(c7)c4c([F]CC(C6)CCCC)cc(c5sc(cc5)c5ccc6C(=O)N(C(=O)c6c5)CCCCCC)c5nsnc45)CC(CC)CCCC)c4nsnc34)cc1)c2)CCCCCC')]
 
         self.do_extract_r_group_diags('S0143720816302054_sc1.jpg', gold)
 

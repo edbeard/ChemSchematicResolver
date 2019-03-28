@@ -9,7 +9,7 @@ Toolkit for extracting diagram-label pairs from schematic chemical diagrams.
 """
 
 from .io import imread
-from .actions import segment, classify_kmeans, preprocessing, label_diags, read_label, read_diagram_pyosra
+from .actions import segment, classify_kmeans, preprocessing, label_diags, read_label, read_diagram_pyosra, clean_output
 from .r_group import detect_r_group, get_rgroup_smiles
 from .validate import is_false_positive
 
@@ -106,7 +106,7 @@ def get_smiles(diag, fig, smiles, r_smiles):
     """ Identifies diagrams containing R-group"""
 
     # Resolve R-groups if detected
-    if diag.label.r_group != [[]]:
+    if len(diag.label.r_group) > 0:
         r_smiles_group = get_rgroup_smiles(diag, fig)
         for smile in r_smiles_group:
             label_cand_str = [cand.text for cand in smile[0]]
@@ -116,7 +116,7 @@ def get_smiles(diag, fig, smiles, r_smiles):
     else:
         smile = read_diagram_pyosra(diag, fig)
         label_raw = diag.label.text
-        label_cand_str = [cand.text.replace('\n', '') for cand in label_raw]
+        label_cand_str = [clean_output(cand.text) for cand in label_raw]
 
         smiles.append((label_cand_str, smile))
 

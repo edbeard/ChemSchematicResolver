@@ -225,6 +225,30 @@ class Label(Panel):
         self.r_group.append(var_value_label_tuples)
 
 
+class RGroup(object):
+    """ Object containing all extracted information for an R-group result"""
+
+    def __init__(self, var, value, label_candidates):
+        self.var = var
+        self.value = value
+        self.label_candidates = label_candidates
+
+    def __repr__(self):
+        return '%s(variable=%s, value=%s, label_candidates=%s)' % (
+            self.__class__.__name__, self.var, self.value, self.label_candidates
+        )
+
+    def __str__(self):
+        return '%s(variable=%s, value=%s, label_candidates=%s)' % (
+            self.__class__.__name__, self.var, self.value, self.label_candidates
+        )
+
+    def convert_to_tuple(self):
+        """ Converts the r-group object to a usable a list of variable-value pairs and their list ofcandidate labels """
+        tuple_r_group = (self.var, self.value, self.label_candidates)
+        return tuple_r_group
+
+
 
 @decorators.python_2_unicode_compatible
 class Figure(object):

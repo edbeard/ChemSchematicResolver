@@ -8,6 +8,8 @@ Test R-group resolution operations.
 """
 
 from chemschematicdiagramextractor import r_group
+from chemschematicdiagramextractor.model import RGroup
+from chemdataextractor.doc.text import Token, Lexicon
 #from molvs import standardize_smiles
 import unittest
 
@@ -52,7 +54,7 @@ class TestRgroup(unittest.TestCase):
 
     def test_standardize_values_alkyls(self):
 
-        var_value_example = [('R', 'Methyl', [''])]
+        var_value_example = [RGroup(Token('R', 0, 1, Lexicon()), Token('Octyl', 4, 5, Lexicon()), [''])]
         result = r_group.standardize_values(var_value_example)
-        print(result)
+        self.assertEqual(result[0].value, 'CCCCCCCC')
 

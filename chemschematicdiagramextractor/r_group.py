@@ -20,11 +20,19 @@ import itertools
 
 from . import io
 from . import actions
+from .model import RGroup
 from .ocr import ASSIGNMENT, SEPERATORS, CONCENTRATION
+import re
+
+from chemdataextractor.doc.text import Token
 
 log = logging.getLogger(__name__)
 
 BLACKLIST_CHARS = ASSIGNMENT + SEPERATORS + CONCENTRATION
+
+# Regular Expressions
+NUMERIC_REGEX = re.compile('^\d{1,3}$')
+ALPHANUMERIC_REGEX = re.compile('^((d-)?(\d{1,2}[A-Za-z]{1,2}[′″‴‶‷⁗]?)(-d))|(\d{1,3})?$')
 
 
 def detect_r_group(diag):
@@ -35,7 +43,8 @@ def detect_r_group(diag):
 
     sentences = diag.label.text
     for sentence in sentences:
-        var_value_pairs = []
+        var_value_pairs = []  # Used to find variable - value pairs for extraction
+
         for i, token in enumerate(sentence.tokens):
             if token.text is '=':
                 print('Found R-Group descriptor %s' % token.text)
@@ -47,49 +56,129 @@ def detect_r_group(diag):
                 if 0 < i < len(sentence.tokens):
                     variable = sentence.tokens[i - 1]
                     value = sentence.tokens[i + 1]
-                    var_value_pairs.append((variable, value))
+                    var_value_pairs.append(RGroup(variable, value, []))
 
             elif token.text == 'or' and var_value_pairs:
                 print('"or" keyword detected. Assigning value to previous R-group variable...')
 
                 # Identify the most recent var_value pair
-                variable = var_value_pairs[-1][0]
+                variable = var_value_pairs[-1].var
                 value = sentence.tokens[i + 1]
-                var_value_pairs.append((variable, value))
+                var_value_pairs.append(RGroup(variable, value, []))
 
-        var_value_label_triplets = get_label_candiates(sentence, var_value_pairs)
+        # Process R-group values from '='
+        r_groups = get_label_candiates(sentence, var_value_pairs)
+        r_groups = standardize_values(r_groups)
+          # TODO : Add logic here to detect all other alphanumerics using re package
 
-        var_value_label_triplets = standardize_values(var_value_label_triplets)
+        # Resolving positional labels where possible for 'or' cases
+        r_groups = filter_repeated_labels(r_groups)
 
-        # TODO : Add logic here to detect all other alphanumerics using re package
-        diag.label.add_r_group_variables(var_value_label_triplets)
+        # Separate duplicate variables into separate lists
+        r_groups_list = separate_duplicate_r_groups(r_groups)
+
+        for r_groups in r_groups_list:
+
+            diag.label.add_r_group_variables(convert_r_groups_to_tuples(r_groups))
+
+        # Process R-group values from 'or' if present
 
     return diag
 
 
-def get_label_candiates(sentence, var_value_pairs, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
-    ''' Extracts label candidates from a sentence that ontains r-groups'''
+def get_label_candiates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
+    """Extracts label candidates from a sentence that contains r-groups"""
 
+    # TODO : Combine this logic into one line?
+    # Remove irrelevant characters and blacklisted words
     candidates = [token for token in sentence.tokens if token.text not in blacklist_chars]
-    vars_and_values = []
-    for var, value in var_value_pairs:
-        vars_and_values.append(var)
-        vars_and_values.append(value)
+    candidates = [token for token in candidates if token.text not in blacklist_words]
 
-    print(candidates)
+    r_group_vars_and_values = []
+    for r_group in r_groups:
+        r_group_vars_and_values.append(r_group.var)
+        r_group_vars_and_values.append(r_group.value)
 
-    output = []
+    candidates = [token for token in candidates if token not in r_group_vars_and_values]
 
-    for var, value in var_value_pairs:
-        label_cands = []
-        for token in candidates:
-            if token not in vars_and_values:
-                label_cands.append(token)
+    for r_group in r_groups:
+        var = r_group.var
+        value = r_group.value
+        label_cands = [candidate for candidate in candidates if candidate not in [var, value]]
+        r_group.label_candidates = label_cands
 
-        output.append((var, value, label_cands))
+    return r_groups
 
-    return output
 
+def filter_repeated_labels(r_groups):
+    """ Checks if the same variable is present twice. If yes, this is an 'or' case so relative label assignment ensues"""
+
+    # Identify 'or' variables
+    or_vars = []
+    vars = [r_group.var for r_group in r_groups]
+    unique_vars = set(vars)
+    for test_var in unique_vars:
+        if vars.count(test_var) > 1:
+            print('Identified "or" variable')
+            or_vars.append(test_var)
+
+    # Get label candidates for r_groups containing this:
+    filtered_r_groups = [r_group for r_group in r_groups if r_group.var in or_vars]
+
+    # If no duplicate r_group variables, exit function
+    if len(filtered_r_groups) == 0:
+        return r_groups
+
+    remaining_r_groups = [r_group for r_group in r_groups if r_group.var not in or_vars]
+    label_cands = filtered_r_groups[0].label_candidates #  Get the label candidates for these vars (should be the same)
+
+    # Prioritizing alphanumerics for relative label assignment
+    alphanumeric_labels = [label for label in label_cands if ALPHANUMERIC_REGEX.match(label.text)]
+
+    output_r_groups = []
+
+    # First check if the normal number of labels is the same
+    if len(filtered_r_groups) == len(label_cands):
+        for i in range(len(filtered_r_groups)):
+            altered_r_group = filtered_r_groups[i]
+            altered_r_group.label_candidates = [label_cands[i]]
+            output_r_groups.append(altered_r_group)
+        output_r_groups = output_r_groups + remaining_r_groups
+
+    # Otherwise, check if alphanumerics match
+    elif len(filtered_r_groups) == len(alphanumeric_labels):
+        for i in range(len(filtered_r_groups)):
+            altered_r_group = filtered_r_groups[i]
+            altered_r_group.label_candidates = [alphanumeric_labels[i]]
+            output_r_groups.append(altered_r_group)
+        output_r_groups = output_r_groups + remaining_r_groups
+
+    # Otherwise return with all labels
+    else:
+        output_r_groups = r_groups
+
+    return output_r_groups
+
+
+
+    # vars_and_values = []
+    # for r_group in var_value_pairs:
+    #     vars_and_values.append(r_group.var)
+    #     vars_and_values.append(r_group.value)
+    #
+    # print(candidates)
+    #
+    # output = []
+    #
+    # for r_group in var_value_pairs:
+    #     label_cands = []
+    #     for token in candidates:
+    #         if token not in vars_and_values:
+    #             label_cands.append(token)
+    #
+    #     output.append((r_group.var, r_group.value, label_cands))
+    #
+    # return output
 
 def get_rgroup_smiles(diag, fig, cleanchars='()'):
     """ Uses modified version of OSRA to get SMILES for multiple """
@@ -128,7 +217,7 @@ def get_rgroup_smiles(diag, fig, cleanchars='()'):
 
     io.imdel('r_group_temp.jpg')
 
-    smiles = [smile.replace('\n', '') for smile in smiles]
+    smiles = [actions.clean_output(smile) for smile in smiles]
 
     labels_and_smiles = []
     for i, smile in enumerate(smiles):
@@ -154,19 +243,75 @@ def resolve_structure(compound):
     return smiles
 
 
-def standardize_values(var_value_label_triplets):
+def convert_r_groups_to_tuples(r_groups):
+    """ Converts a list of Rgroup model objets to Rgroup tuples"""
+
+    return [r_group.convert_to_tuple() for r_group in r_groups]
+
+
+def standardize_values(r_groups):
     """ Converts values to a format compatible with pyosra"""
 
     # List of tuples pairing multiple definitions to the appropriate SMILES string
-    alkyls = [('C', ['methyl']),
-              ('CC', ['ethyl'])]
+    # TODO : SHould define these globally?
+    alkyls = [('CH', ['methyl']),
+              ('C2H', ['ethyl']),
+              ('C3H', ['propyl']),
+              ('C4H', ['butyl']),
+              ('C5H', ['pentyl']),
+              ('C6H', ['hexyl']),
+              ('C7H', ['heptyl']),
+              ('C8H', ['octyl']),
+              ('C9H', ['nonyl']),
+              ('C10H', ['decyl'])]
 
-    for triplet in var_value_label_triplets:
-        value = triplet[1]
+    for r_group in r_groups:
+        value = r_group.value.text
         for alkyl in alkyls:
             if value.lower() in alkyl[1]:
-                triplet[1] = alkyl[0]
+                r_group.value = Token(alkyl[0], r_group.value.start, r_group.value.end, r_group.value.lexicon)
 
-    return var_value_label_triplets
+    return r_groups
+
+
+def separate_duplicate_r_groups(r_groups):
+    """ Separate duplicate R-group variables into separate lists"""
+
+    if len(r_groups) is 0:
+        return r_groups
+
+    vars = [r_group.var for r_group in r_groups]
+    unique_vars = list(set(vars))
+
+    var_quantity_tuples = []
+    vars_dict = {}
+    output = []
+
+    for var in unique_vars:
+        var_quantity_tuples.append((var, vars.count(var)))
+        vars_dict[var.text] = []
+
+    equal_length = all(elem[1] == var_quantity_tuples[0][1] for elem in var_quantity_tuples)
+
+    # If irregular, default behaviour is to just use one of the values
+    if not equal_length:
+        return r_groups
+
+    # Populate dictionary for each unque variable
+    for var in unique_vars:
+        for r_group in r_groups:
+            if var == r_group.var:
+                vars_dict[var.text].append(r_group)
+
+    print(vars_dict)
+
+    for i in range(len(vars_dict[var.text])):
+        temp = []
+        for var in unique_vars:
+            temp.append(vars_dict[var.text][i])
+        output.append(temp)
+
+    return output
+
 
 

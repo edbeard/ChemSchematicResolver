@@ -685,8 +685,15 @@ def read_diagram_pyosra(diag, fig):
 
     imdel(temp_img_fname)
 
-    smile = smile.replace('\n', '')
+    smile = clean_output(smile)
     return smile
+
+
+def clean_output(smile):
+    """ Remove whitespace and newline characters"""
+
+    smile = smile.replace(' ', '')
+    return smile.replace('\n', '')
 
 
 def get_diag_and_label(img):
