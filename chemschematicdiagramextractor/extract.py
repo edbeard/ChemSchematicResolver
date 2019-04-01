@@ -31,6 +31,7 @@ def extract_diagram(filename, debug=False):
 
     # Read in float and raw pixel images
     fig = imread(filename)
+    fig_bbox = fig.get_bounding_box()
 
     # Create unreferenced binary copy
     bin_fig = copy.deepcopy(fig)
@@ -55,7 +56,7 @@ def extract_diagram(filename, debug=False):
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
 
     # Add label information to the appropriate diagram by expanding bounding box
-    labelled_diags = label_diags(diags, labels)
+    labelled_diags = label_diags(labels, diags, fig_bbox)
 
     for diag in labelled_diags:
 

@@ -3,3 +3,4 @@
 /tests/train*
 /training/
 **/output/
+/stats/*

@@ -148,6 +148,9 @@ class TestSystem(unittest.TestCase):
     def test_segmentation_r_group_diags_img1(self):
         self.do_segmentation('S0143720816301565_gr1.jpg', r_group_diags_dir)
 
+    def test_segmentation_r_group_diags_img1(self):
+        self.do_segmentation('S0143720816302054_sc1.jpg', filedir=r_group_diags_dir)
+
 
     def do_grouping_by_ocr(self):
         '''
@@ -249,6 +252,8 @@ class TestSystem(unittest.TestCase):
     def test_grouping10(self):
         self.do_grouping('S0143720816300900_gr2.jpg')
 
+    def test_grouping_r_group_diags(self):
+        self.do_grouping('S0143720816302054_sc1.jpg', filedir=r_group_diags_dir)
 
     def test_grouping_markush(self):
         self.do_grouping('S0143720816300286_gr1.jpg')

@@ -578,10 +578,11 @@ def merge_rect(rect1, rect2):
 def get_duplicate_labelling(labelled_diags):
     """ Returns a set of diagrams which share a label"""
 
-    failed_diag_label = set()
+    failed_diag_label = set(diag for diag in labelled_diags if not diag.label)
+    filtered_labelled_diags = [diag for diag in labelled_diags if diag not in failed_diag_label]
 
     # Identifying cases with the same label:
-    for a, b in itertools.combinations(labelled_diags, 2):
+    for a, b in itertools.combinations(filtered_labelled_diags, 2):
         if a.label == b.label:
             failed_diag_label.add(a)
             failed_diag_label.add(b)
@@ -628,10 +629,12 @@ def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
 
     probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
     found = False
-    max_threshold = max(fig_bbox.width, fig_bbox.height)
+    max_threshold_width = fig_bbox.width
+    max_threshold_height = fig_bbox.height
+
     # TODO : Add thresholds for right, bottom, left and top
 
-    while found is False and max(probe_rect.width, probe_rect.height) < max_threshold:
+    while found is False and (probe_rect.width < max_threshold_width or probe_rect.height < max_threshold_height):
         # Increase border value each loop
         probe_rect.right = probe_rect.right + rate
         probe_rect.bottom = probe_rect.bottom + rate
@@ -652,7 +655,7 @@ def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=
     probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
     found = False
 
-    def label_loop(direction):
+    def label_loop():
 
         for label in labels:
             # Only accepting labels in the average direction
@@ -669,22 +672,22 @@ def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=
     if direction == 'E':
         while found is False and probe_rect.right < fig_bbox.right:
             probe_rect.right = probe_rect.right + rate
-            found = label_loop(direction)
+            found = label_loop()
 
     elif direction == 'S':
         while found is False and probe_rect.bottom < fig_bbox.bottom:
             probe_rect.bottom = probe_rect.bottom + rate
-            found = label_loop(direction)
+            found = label_loop()
 
     elif direction == 'W':
         while found is False and probe_rect.left > fig_bbox.left:
             probe_rect.left = probe_rect.left - rate
-            found = label_loop(direction)
+            found = label_loop()
 
     elif direction == 'N':
         while found is False and probe_rect.top > fig_bbox.top:
             probe_rect.top = probe_rect.top - rate
-            found = label_loop(direction)
+            found = label_loop()
     else:
         return diag
 
