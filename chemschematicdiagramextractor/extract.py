@@ -87,7 +87,7 @@ def extract_diagram(filename, debug=False):
         # Get SMILES for output
         smiles, r_smiles = get_smiles(diag, raw_fig, smiles, r_smiles)
 
-    print( " The results are :")
+    print("The results are :")
     print('R-smiles %s' % r_smiles)
     print('Smiles %s' % smiles)
     if debug is True:

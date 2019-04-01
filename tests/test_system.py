@@ -29,6 +29,7 @@ tests_dir = os.path.dirname(os.path.abspath(__file__))
 train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
 examples_dir = os.path.join(train_dir, 'train_imgs')
 markush_dir = os.path.join(train_dir, 'train_markush_small')
+r_group_diags_dir = os.path.join(train_dir, 'r_group_diags')
 labelled_output_dir = os.path.join(train_dir, 'output')
 
 class TestSystem(unittest.TestCase):
@@ -49,6 +50,11 @@ class TestSystem(unittest.TestCase):
 
         panels = csde.actions.segment(raw_fig)
         print('Segmented panel number : %s ' % len(panels))
+
+        # Assign the pixel ratios
+        for panel in panels:
+            panel.pixel_ratio = csde.validate.pixel_ratio(fig, panel)
+
         labels, diags = csde.actions.classify_kmeans(panels)
         labels, diags = csde.actions.preprocessing(labels, diags, fig)
         all_panels = labels + diags
@@ -58,7 +64,16 @@ class TestSystem(unittest.TestCase):
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        for panel in all_panels:
+        # Show diagrams in blue
+        for panel in diags:
+
+            diag_rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
+                                           fill=False, edgecolor='b', linewidth=2)
+            ax.text(panel.left, panel.top + panel.height / 4, '[%s]' % panel.tag, size=panel.height / 20, color='r')
+            ax.add_patch(diag_rect)
+
+        # Show labels in red
+        for panel in labels:
 
             diag_rect = mpatches.Rectangle((panel.left, panel.top), panel.width, panel.height,
                                            fill=False, edgecolor='r', linewidth=2)
@@ -75,6 +90,13 @@ class TestSystem(unittest.TestCase):
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             self.do_segmentation(img_path, filedir=test_path)
+
+    def test_variable_cases(self):
+
+        self.do_segmentation('S0143720816300286_gr1.jpg')
+        self.do_segmentation('S0143720816301115_gr1.jpg')
+        self.do_segmentation('S0143720816301115_gr4.jpg')
+        self.do_segmentation('S014372081630167X_sc1.jpg')
 
     def test_segmentation1(self):
 
@@ -108,6 +130,12 @@ class TestSystem(unittest.TestCase):
     def test_segmentation10(self):
         self.do_segmentation('S0143720816300900_gr2.jpg')
 
+    def test_segmentation11(self):
+        self.do_segmentation('S0143720816301115_gr1.jpg')
+
+    def test_segmentation12(self):
+        self.do_segmentation('S0143720816301115_gr4.jpg')
+
     def test_segmentation_markush_img(self):
         self.do_segmentation('S0143720816301115_r75.jpg')
 
@@ -116,6 +144,9 @@ class TestSystem(unittest.TestCase):
 
     def test_segmentation_markush_img3(self):
         self.do_segmentation('S0143720816301681_gr1.jpg')
+
+    def test_segmentation_r_group_diags_img1(self):
+        self.do_segmentation('S0143720816301565_gr1.jpg', r_group_diags_dir)
 
 
     def do_grouping_by_ocr(self):
@@ -138,6 +169,7 @@ class TestSystem(unittest.TestCase):
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
+        fig_bbox = fig.get_bounding_box()
         raw_fig = csde.io.imread(test_diag, raw=True)
 
         # Create unreferenced binary copy
@@ -152,7 +184,7 @@ class TestSystem(unittest.TestCase):
         ax.imshow(fig.img)
 
        # labelled_diags = csde.actions.classify_kruskal_after_kmeans(labels, diags)
-        labelled_diags = csde.actions.label_diags(labels, diags)
+        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
 
 
         # panels = csde.actions.relabel_panels(panels)
@@ -160,7 +192,7 @@ class TestSystem(unittest.TestCase):
         # labelled_diags = csde.actions.label_kruskal(diags, labels)
         #labelled_diags = csde.actions.label_diags(diags, labels)
 
-        colours = iter(['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y','r', 'b', 'g', 'k', 'c', 'm', 'y'])
+        colours = iter(['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
 
         for diag in labelled_diags:
             colour = next(colours)
@@ -183,6 +215,7 @@ class TestSystem(unittest.TestCase):
         test_path = examples_dir
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
+            print(img_path)
             self.do_grouping(img_path, filedir=test_path)
 
 

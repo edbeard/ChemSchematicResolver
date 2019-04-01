@@ -45,7 +45,7 @@ def pixel_ratio(fig, diag):
     :param numpy.ndarray img: Input image
     """
 
-    cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10)
+    cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
     ones = np.count_nonzero(cropped_img)
     all_pixels = np.size(cropped_img)
     return ones / all_pixels
@@ -71,7 +71,7 @@ def diagram_to_image_area_ratio(fig, diags):
 def avg_diagram_area_to_image_area(fig, diags):
     """ Calculate ratio of average diagram area to total image area"""
 
-    cropped_diags_img = [crop(fig.img, diag.left, diag.right, diag.top, diag.bottom, padding=10) for diag in diags]
+    cropped_diags_img = [crop(fig.img, diag.left, diag.right, diag.top, diag.bottom) for diag in diags]
     diags_size = [img.size for img in cropped_diags_img]
     avg_diag_size = sum(diags_size) / len(diags_size)
     return avg_diag_size / fig.img.size

@@ -139,18 +139,27 @@ class Rect(object):
 class Panel(Rect):
     """ Tagged section inside Figure"""
 
-    def __init__(self, left, right, top, bottom, tag):
+    def __init__(self, left, right, top, bottom, tag=0):
         super(Panel, self).__init__(left, right, top, bottom)
         self.tag = tag
-        self.repeating = False
+        self._repeating = False
+        self._pixel_ratio = None
 
     @property
     def repeating(self):
-        return self.repeating
+        return self._repeating
 
     @repeating.setter
     def repeating(self, repeating):
         self._repeating = repeating
+
+    @property
+    def pixel_ratio(self):
+        return self._pixel_ratio
+
+    @pixel_ratio.setter
+    def pixel_ratio(self, pixel_ratio):
+        self._pixel_ratio = pixel_ratio
 
 class Diagram(Panel):
     """ Chemical Schematic Diagram that is identified"""
@@ -175,6 +184,28 @@ class Diagram(Panel):
     @smile.setter
     def smile(self, smile):
         self._smile = smile
+
+    def compass_position(self, other):
+        """ Determines the compass position (NSEW) of other relative to self"""
+
+
+        length = other.center[0] - self.center[0]
+        height = other.center[1] - self.center[1]
+
+        if abs(length) > abs(height):
+            if length > 0:
+                return 'E'  # TODO : Change to enums
+            else:
+                return 'W'
+        elif abs(length) < abs(height):
+            if height > 0:
+                return 'S'
+            else:
+                return 'N'
+
+        else:
+            return None
+
 
     def __repr__(self):
         if self.label is not None:
@@ -276,6 +307,18 @@ class Figure(object):
 
     def __str__(self):
         return '<%s>' % self.__class__.__name__
+
+    def get_bounding_box(self):
+        """ Returns the Panel object for the extreme bounding box of the image
+
+        :rtype: Panel()"""
+
+        rows = np.any(self.img, axis=1)
+        cols = np.any(self.img, axis=0)
+        left, right = np.where(rows)[0][[0, -1]]
+        top, bottom = np.where(cols)[0][[0, -1]]
+        return Panel(left, right, top, bottom)
+
 
 class Graph:
     """ Connected graph object

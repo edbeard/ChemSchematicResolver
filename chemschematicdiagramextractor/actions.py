@@ -279,9 +279,9 @@ def get_threshold(panels):
 def get_labels_and_diagrams_k_means_clustering(panels):
     """ Splits into labels and diagrams using kmeans clustering of area"""
 
-    all_areas = np.array([panel.area for panel in panels])
+    all_params = np.array([[panel.perimeter / panel.area, panel.perimeter] for panel in panels])
     km = KMeans(n_clusters=2)
-    clusters = km.fit(all_areas.reshape(-1,1))
+    clusters = km.fit(all_params)
 
     group_1, group_2 =[], []
 
@@ -575,21 +575,63 @@ def merge_rect(rect1, rect2):
     bottom = max(rect1.bottom, rect2.bottom)
     return Rect(left, right, top, bottom)
 
+def get_duplicate_labelling(labelled_diags):
+    """ Returns a set of diagrams which share a label"""
 
-def label_diags(diags, labels, rate=1):
+    failed_diag_label = set()
+
+    # Identifying cases with the same label:
+    for a, b in itertools.combinations(labelled_diags, 2):
+        if a.label == b.label:
+            failed_diag_label.add(a)
+            failed_diag_label.add(b)
+
+    return failed_diag_label
+
+
+def label_diags(labels, diags, fig_bbox, rate=1):
     """ Pair all diags to labels using assign_label_to_diag"""
 
-    return [assign_label_to_diag(diag, labels, rate) for diag in diags]
+    # Sort diagrams from largest to smallest
+    diags.sort(key=lambda x: x.area, reverse=True)
+    initial_sorting = [assign_label_to_diag(diag, labels, fig_bbox) for diag in diags]
+
+    # Identify failures by the presence of duplicate labels
+    failed_diag_label = get_duplicate_labelling(initial_sorting)
+
+    if len(failed_diag_label) == 0:
+        return initial_sorting
+
+    # Find average position of label relative to diagram (NSEW)
+    successful_diag_label = [diag for diag in diags if diag not in failed_diag_label]
+
+    if len(successful_diag_label) == 0:
+
+        #Attempt looking 'South' for all diagrams (most common realtive label position)
+        altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, 'S', fig_bbox) for diag in failed_diag_label]
+        if len(get_duplicate_labelling(altered_sorting)) != 0:
+            return initial_sorting
+        else:
+            return altered_sorting
+
+    # Compass positions of labels relative to diagram
+    diag_compass = [diag.compass_position(diag.label) for diag in successful_diag_label if diag.label]
+    mode_compass = max(diag_compass, key=diag_compass.count)
+
+    # Then, expand outwards in this direction for all failures.
+    altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, mode_compass, fig_bbox) for diag in failed_diag_label]
+    return altered_sorting + successful_diag_label
 
 
-def assign_label_to_diag(diag, labels, rate=1):
+def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
     """ Iteratively expands the bounding box of diagram until it reaches a label"""
 
     probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
     found = False
+    max_threshold = max(fig_bbox.width, fig_bbox.height)
     # TODO : Add thresholds for right, bottom, left and top
 
-    while found is False:
+    while found is False and max(probe_rect.width, probe_rect.height) < max_threshold:
         # Increase border value each loop
         probe_rect.right = probe_rect.right + rate
         probe_rect.bottom = probe_rect.bottom + rate
@@ -601,6 +643,51 @@ def assign_label_to_diag(diag, labels, rate=1):
                 found = True
                 print(diag.tag, label.tag)
                 diag.label = label
+    return diag
+
+
+def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=1):
+    """ Iteratively expands the bounding box of diagram in the specified direction"""
+
+    probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
+    found = False
+
+    def label_loop(direction):
+
+        for label in labels:
+            # Only accepting labels in the average direction
+            if diag.compass_position(label) != direction:
+                pass
+            elif probe_rect.overlaps(label):
+                print(diag.tag, label.tag)
+                diag.label = label
+                return True
+
+        return False
+
+    # Increase border value each loop
+    if direction == 'E':
+        while found is False and probe_rect.right < fig_bbox.right:
+            probe_rect.right = probe_rect.right + rate
+            found = label_loop(direction)
+
+    elif direction == 'S':
+        while found is False and probe_rect.bottom < fig_bbox.bottom:
+            probe_rect.bottom = probe_rect.bottom + rate
+            found = label_loop(direction)
+
+    elif direction == 'W':
+        while found is False and probe_rect.left > fig_bbox.left:
+            probe_rect.left = probe_rect.left - rate
+            found = label_loop(direction)
+
+    elif direction == 'N':
+        while found is False and probe_rect.top > fig_bbox.top:
+            probe_rect.top = probe_rect.top - rate
+            found = label_loop(direction)
+    else:
+        return diag
+
     return diag
 
 
