@@ -17,6 +17,7 @@ tests_dir = os.path.dirname(os.path.abspath(__file__))
 train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
 train_markush_small_dir = os.path.join(train_dir, 'train_markush_small')
 r_group_diag_dir = os.path.join(train_dir, 'r_group_diags')
+train_imgs_dir = os.path.join(train_dir, 'train_imgs')
 
 
 class TestExtract(unittest.TestCase):
@@ -30,6 +31,19 @@ class TestExtract(unittest.TestCase):
         self.assertEqual(gold, result)
 
         return result
+
+    def do_extract_all_imgs(self, dir_name=train_imgs_dir):
+        """ Run extraction on the 'train_imgs' directory (no assertions)"""
+
+        test_path = train_imgs_dir
+        test_imgs = os.listdir(test_path)
+        for img_path in test_imgs:
+            full_path = os.path.join(test_path, img_path)
+            csde.extract.extract_diagram(full_path, debug=True)
+
+    def test_run_train_imgs(self):
+        """ Run all images in train_imgs directory"""
+        self.do_extract_all_imgs()
 
     def test_r_group_extract(self):
 
@@ -102,3 +116,16 @@ class TestExtract(unittest.TestCase):
         gold = []
 
         self.do_extract_r_group_diags('S0143720816302108_gr1.jpg', gold)
+
+    def do_extract_train_imgs(self, filename, gold):
+        """ Extract images from the train_imgs directory"""
+
+        path = os.path.join(train_imgs_dir, filename)
+        result = csde.extract.extract_diagram(path, debug=False)
+        self.assertEqual(gold, result)
+
+    def test_train_imgs_1(self):
+
+        gold = []
+
+        self.do_extract_train_imgs('S0143720816301115_gr1.jpg', gold)

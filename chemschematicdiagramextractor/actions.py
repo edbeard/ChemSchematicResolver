@@ -133,25 +133,25 @@ def get_bounding_box(fig):
     return panels
 
 
-def get_repeating_unit(panels, fig):
+def get_repeating_unit(labels, diags, fig):
     """ Identifies 'n' labels as repeating unit identifiers"""
+
+    # TODO : Alter this logic to be done at normal 'read label' time?
+    # Could prevent reading of labels twice unecessarily...
 
     ns = []
 
-    thresh = get_threshold(panels)
-    diags = (panel for panel in panels if panel.area > thresh)
-
     for diag in diags:
-        for panel in panels:
-            if diag.overlaps(panel) and (panel.center_px[0] - diag.center_px[0]) > 0:
-                repeating_units = [word for sentence in read_label(fig, panel) for word in sentence if 'n' in word]
+        for cand in labels:
+            if diag.overlaps(cand):
+
+                repeating_units = [token for sentence in read_label(fig, cand).text for token in sentence.tokens if 'n' is token.text]
                 if repeating_units:
-                    ns.append(panel)
+                    ns.append(cand)
                     diag.repeating = True
 
-    panels = [panel for panel in panels if panel not in ns]
-    panels = relabel_panels(panels)
-    return panels
+    labels = [label for label in labels if label not in ns]
+    return labels, diags
 
 
 def relabel_panels(panels):
@@ -186,9 +186,8 @@ def classify_kmeans(panels):
 def preprocessing(labels, diags, fig):
     """Preprocessing steps, expand as needed"""
 
-    # Pre-processing filtering
-    # TODO : Fix the repeating unit logic to work under new, early classification system
-    # panels = get_repeating_unit(panels, fig)
+    # Remove repeating unit indicators
+    labels, diags = get_repeating_unit(labels, diags, fig)
 
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
@@ -272,7 +271,7 @@ def classify_kruskal_after_kmeans(labels, diagrams):
 
 
 def get_threshold(panels):
-    """ Get's a basic threshold value from area"""
+    """ Get's a basic threshold value from area of all panels"""
     return 1.5 * np.mean([panel.area for panel in panels])
 
 
@@ -300,7 +299,7 @@ def get_labels_and_diagrams_k_means_clustering(panels):
         labels = group_1
 
     # Convert to appropriate types
-    labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels]
+    labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels if label.area > 8]
     diags = [Diagram(diag.left, diag.right, diag.top, diag.bottom, diag.tag) for diag in diags]
     return labels, diags
 

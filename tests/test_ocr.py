@@ -60,8 +60,10 @@ class TestOcr(unittest.TestCase):
         fig = csde.io.imread(path)
         copy_fig = copy.deepcopy(fig)
 
+        bin_fig = copy_fig
+
         # Trying binarization
-        bin_fig = csde.actions.binarize(copy_fig, threshold=0.7)
+        #bin_fig = csde.actions.binarize(copy_fig, threshold=0.7)
         # Create output image
 
         text_blocks = csde.ocr.get_text(bin_fig.img)

@@ -99,6 +99,9 @@ def extract_diagram(filename, debug=False):
 
     # Removing false positives from lack of labels or wildcard smiles
     output = [smile for smile in total_smiles if is_false_positive(smile) is False]
+    print('Final Results : ')
+    for result in output:
+        print(result)
 
     return output
 
