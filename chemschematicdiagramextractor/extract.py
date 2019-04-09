@@ -46,7 +46,7 @@ def extract_diagram(filename, debug=False):
     labels, diags = classify_kmeans(panels)
 
     # Proprocess image (eg merge labels that are small into larger labels)
-    labels, diags = preprocessing(labels, diags, bin_fig)
+    labels, diags, diag_fig = preprocessing(labels, diags, fig)
 
     if debug is True:
         # Create output image
@@ -86,7 +86,7 @@ def extract_diagram(filename, debug=False):
         diag = detect_r_group(diag)
 
         # Get SMILES for output
-        smiles, r_smiles = get_smiles(diag, raw_fig, smiles, r_smiles)
+        smiles, r_smiles = get_smiles(diag, diag_fig, smiles, r_smiles)
 
     print("The results are :")
     print('R-smiles %s' % r_smiles)

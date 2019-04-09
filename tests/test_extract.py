@@ -75,7 +75,10 @@ class TestExtract(unittest.TestCase):
         # Identified one of the numeric labels as an atom indicator (inside osra)
         # Could be solved by doing a numerical clean
 
-        gold = []
+        gold = [(['1'], 'N(CC)(CC)c1ccc2cc(C#N)c(=N)oc2c1'),
+                (['2'], 'N(CC)(CC)c1ccc2cc(C#N)/c(=N/C(=O)OCC)/oc2c1'),
+                (['3'], 'N(CC)(CC)c1ccc2cc(C#N)c(=O)oc2c1'),
+                (['4'], 'N(CC)(CC)c1ccc2ccc(=O)oc2c1')]
 
         self.do_extract_small('S0143720816301681_gr1.jpg', gold)
 

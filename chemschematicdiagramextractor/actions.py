@@ -33,7 +33,7 @@ from sklearn.cluster import KMeans
 import osra_rgroup
 
 from .model import Panel, Diagram, Label, Rect, Graph
-from .ocr import get_text, get_sentences, PSM, LABEL_WHITELIST
+from .ocr import get_text, get_sentences, get_words, PSM, LABEL_WHITELIST
 from .io import imsave, imdel
 from .parse import LabelParser
 
@@ -189,10 +189,51 @@ def preprocessing(labels, diags, fig):
     # Remove repeating unit indicators
     labels, diags = get_repeating_unit(labels, diags, fig)
 
+    diag_fig = get_diagram_numbers(diags, fig)
+
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
-    return labels_converted, diags
+    return labels_converted, diags, diag_fig
+
+
+def get_diagram_numbers(diags, fig):
+    """ Removes vertex numbers from diagrmas for cleaner OSRA resolution"""
+
+    num_bbox = []
+    for diag in diags:
+
+        diag_text = read_diag_text(fig, diag)
+
+        # Simplify into list comprehension when working...
+        for token in diag_text:
+            if token.text in '123456789':
+                print("Numeral sucessfully extracted %s" % token.text)
+                num_bbox.append((token.left, token.right, token.top, token.bottom))
+
+    # Make a cleaned copy of image to be used when resolving diagrams
+    diag_fig = copy.deepcopy(fig)
+
+    for bbox in num_bbox:
+        diag_fig.img[bbox[2]:bbox[3], bbox[0]:bbox[1]] = np.ones(3)
+
+    return diag_fig
+
+
+
+def remove_diagram_numbers(nums_bboxes, fig):
+    """ Removes floating numbers from the diagram regions of image """
+
+    for bbox in nums_bboxes:
+        fig[bbox[2]:bbox[3], bbox[0], bbox[1]] = np.ones(3)
+
+    # Remove after debugging:
+    # import matplotlib.pyplot as plt
+    # out_fig, ax = plt.subplots(figsize=(10, 6))
+    # ax.imshow(fig.img)
+    # plt.show()
+
+
 
 
 def classify(panels):
@@ -305,7 +346,9 @@ def get_labels_and_diagrams_k_means_clustering(panels):
 
 
 def get_labels_and_diagrams_from_threshold(panels):
-    """ Separates into diagrams and lables based on a threshold"""
+    """ Separates into diagrams and lables based on a threshold
+    CURRENTLY NOT IMPLEMENTED
+    """
 
     # TODO : Change thresholding logic to a whitespace ratio from orig image
     area_mean = np.mean([panel.area for panel in panels])
@@ -373,6 +416,7 @@ def classify_kruskal(panels):
 
 def label_kruskal(diags, labels):
     """ Test function for labelling by kruskals algorithm
+    CURRENTLY NOT IN USE - labelling done through
     TODO : Implement in the main classify_kruskal if this works
 
     """
@@ -631,8 +675,6 @@ def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
     max_threshold_width = fig_bbox.width
     max_threshold_height = fig_bbox.height
 
-    # TODO : Add thresholds for right, bottom, left and top
-
     while found is False and (probe_rect.width < max_threshold_width or probe_rect.height < max_threshold_height):
         # Increase border value each loop
         probe_rect.right = probe_rect.right + rate
@@ -710,6 +752,14 @@ def read_all_diags(fig, diags):
         print(diag.tag, diag.smile)
     return diags
 
+def read_diag_text(fig, diag, whitelist=LABEL_WHITELIST):
+    """ Reads a diagram using OCR and returns the textual OCR objects"""
+    img = convert_greyscale(fig.img)
+    cropped_img = crop(img, diag.left, diag.right, diag.top, diag.bottom)
+    text = get_text(cropped_img, x_offset=diag.left, y_offset=diag.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
+    tokens = get_words(text)
+    return tokens
+
 
 def read_label(fig, label, whitelist=LABEL_WHITELIST):
     """ Reads a label paragraph objects using ocr
@@ -720,8 +770,6 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     :rtype List[List[str]]
     """
 
-    # TODO : Add post-processing check to see if the majority of returned characters wer letters / numbers.
-    #  If above threshold, redo with changed 'whitelist' characters
     img = convert_greyscale(fig.img)
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
     text = get_text(cropped_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
@@ -787,7 +835,7 @@ def clean_output(smile):
 
 def get_diag_and_label(img):
     """ Segments images into diagram-label pairs
-
+    CURRENTLY NOT USED
     :param numpy.ndarray img: Input image
     :return: Binary image.
     :rtype: numpy.ndarray
@@ -795,7 +843,7 @@ def get_diag_and_label(img):
     num_lbls = 1000 # Arbitrarily large number
     int_img = None
     while num_lbls > 6: # TO DO : automatically determine 6
-        img = morphology.binary_dilation(img, selem=morphology.disk(2))# TODO: Dynamic selem size?
+        img = morphology.binary_dilation(img, selem=morphology.disk(2))
         int_img = img.astype(int)
         labels, num_lbls = morphology.label(int_img, return_num=True)
         print(num_lbls)

@@ -56,13 +56,13 @@ class TestSystem(unittest.TestCase):
             panel.pixel_ratio = csde.validate.pixel_ratio(fig, panel)
 
         labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        labels, diags, diag_fig = csde.actions.preprocessing(labels, diags, fig)
         all_panels = labels + diags
         print('After processing : %s' % len(all_panels))
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
-        ax.imshow(fig.img)
+        ax.imshow(diag_fig.img)
 
         # Show diagrams in blue
         for panel in diags:
@@ -543,27 +543,27 @@ class TestSystem(unittest.TestCase):
 
         r_smiles = []
         smiles = []
+
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
-        fig_copy = copy.deepcopy(fig) # Unreferenced copy for display
+        fig_bbox = fig.get_bounding_box()
         raw_fig = csde.io.imread(test_diag, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
-        bin_fig = csde.actions.binarize(bin_fig, threshold=0.7)
 
-
-        panels = csde.actions.segment(fig)
+        panels = csde.actions.segment(bin_fig)
         labels, diags = csde.actions.classify_kmeans(panels)
         labels, diags = csde.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
-        ax.imshow(fig_copy.img)
+        ax.imshow(fig.img)
 
-        labelled_diags = csde.actions.label_diags(diags, labels)
+        # labelled_diags = csde.actions.classify_kruskal_after_kmeans(labels, diags)
+        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
@@ -582,7 +582,7 @@ class TestSystem(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            diag.label = csde.actions.read_label(fig_copy, label)
+            diag.label = csde.actions.read_label(fig, label)
             diag = csde.r_group.detect_r_group(diag)
 
             print(diag.label.r_group)
@@ -594,13 +594,13 @@ class TestSystem(unittest.TestCase):
             # print("Label %s : %s " % (label.tag, labels_text))
 
             if diag.label.r_group != [[]]:
-                r_smiles_group = csde.r_group.get_rgroup_smiles(diag, raw_fig)
+                r_smiles_group = csde.r_group.get_rgroup_smiles(diag, fig)
                 for smile in r_smiles_group:
                     r_smiles.append(smile)
 
             else:
 
-                smile = csde.actions.read_diagram_pyosra(diag, raw_fig)
+                smile = csde.actions.read_diagram_pyosra(diag, fig)
                 smiles.append(smile)
 
         ax.set_axis_off()
