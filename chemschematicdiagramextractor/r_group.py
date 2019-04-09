@@ -180,11 +180,11 @@ def filter_repeated_labels(r_groups):
     #
     # return output
 
-def get_rgroup_smiles(diag, fig, cleanchars='()'):
+def get_rgroup_smiles(diag, cleanchars='()'):
     """ Uses modified version of OSRA to get SMILES for multiple """
 
     # Save a temp image
-    io.imsave('r_group_temp.jpg', actions.crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
+    io.imsave('r_group_temp.jpg', diag.fig.img)
 
     osra_input = []
     label_cands = []

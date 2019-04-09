@@ -27,7 +27,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(train_markush_small_dir, filename)
-        result = csde.extract.extract_diagram(path, debug=False)
+        result = csde.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
         return result
@@ -86,7 +86,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(r_group_diag_dir, filename)
-        result = csde.extract.extract_diagram(path, debug=False)
+        result = csde.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
     def test_r_group_diag_1(self):
@@ -119,6 +119,23 @@ class TestExtract(unittest.TestCase):
         gold = []
 
         self.do_extract_r_group_diags('S0143720816302108_gr1.jpg', gold)
+
+    def test_r_group_diag_4(self):
+
+        # Schematic flow diagram, including arrows etc
+
+        gold = []
+
+        self.do_extract_r_group_diags('S0143720816301826_sc1.jpg', gold)
+
+
+    def test_r_group_diag_5(self):
+
+        # Containing segmenting lines, and large R-groups
+
+        gold = []
+
+        self.do_extract_r_group_diags('S0143720816301401_gr5.jpg', gold)
 
     def do_extract_train_imgs(self, filename, gold):
         """ Extract images from the train_imgs directory"""

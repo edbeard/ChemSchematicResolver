@@ -189,12 +189,12 @@ def preprocessing(labels, diags, fig):
     # Remove repeating unit indicators
     labels, diags = get_repeating_unit(labels, diags, fig)
 
-    diag_fig = remove_diag_pixel_islands(diags, fig)
+    diags = remove_diag_pixel_islands(diags, fig)
 
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
-    return labels_converted, diags, diag_fig
+    return labels_converted, diags
 
 
 def get_diagram_numbers(diags, fig):
@@ -224,29 +224,28 @@ def get_diagram_numbers(diags, fig):
 def remove_diag_pixel_islands(diags, fig):
     """ Removes all small pixel islands from the diagram """
 
-    sub_bbox = []
-
     for diag in diags:
 
-        diag_img = Figure(crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
-        sub_panels = segment(diag_img, size=13)
+        # Make a cleaned copy of image to be used when resolving diagrams
+        clean_fig = copy.deepcopy(fig)
+
+        diag_fig = Figure(crop(clean_fig.img, diag.left, diag.right, diag.top, diag.bottom))
+        seg_img = Figure(crop(clean_fig.img, diag.left, diag.right, diag.top, diag.bottom))
+        sub_panels = segment(seg_img, size=13)
 
         panel_areas = [panel.area for panel in sub_panels]
         diag_area = max(panel_areas)
 
         sub_panels = [panel for panel in sub_panels if panel.area != diag_area]
 
-        sub_bbox = sub_bbox + [(diag.left + panel.left, diag.left + panel.right,
-                                diag.top + panel.top, diag.top + panel.bottom) for panel in sub_panels]
+        sub_bbox = [(panel.left, panel.right, panel.top, panel.bottom) for panel in sub_panels]
 
+        for bbox in sub_bbox:
+            diag_fig.img[bbox[2]:bbox[3], bbox[0]:bbox[1]] = np.ones(3)
 
-    # Make a cleaned copy of image to be used when resolving diagrams
-    diag_fig = copy.deepcopy(fig)
+        diag.fig = diag_fig
 
-    for bbox in sub_bbox:
-        diag_fig.img[bbox[2]:bbox[3], bbox[0]:bbox[1]] = np.ones(3)
-
-    return diag_fig
+    return diags
 
 
 
@@ -839,12 +838,12 @@ def read_diagram(fig, diag):
         return results[0], results[1][:-2]
 
 
-def read_diagram_pyosra(diag, fig):
+def read_diagram_pyosra(diag):
     """ Converts a diagram to SMILES using PYOSRA"""
 
     # Save a temp image
     temp_img_fname = 'osra_temp.jpg'
-    imsave(temp_img_fname, crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
+    imsave(temp_img_fname, diag.fig.img)
 
     # Run osra on temp image
     smile = osra_rgroup.read_diagram(temp_img_fname)

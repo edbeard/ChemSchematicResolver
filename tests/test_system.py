@@ -34,6 +34,51 @@ labelled_output_dir = os.path.join(train_dir, 'output')
 
 class TestSystem(unittest.TestCase):
 
+    # Testing that the images are being cleaned of floating pixels
+    def do_diag_clean(self, filename, filedir=examples_dir):
+        """
+        Tests that rouge pixel islands are removed for all diagrams in filename
+        :param filename
+        :return:
+        """
+
+        test_diag = os.path.join(filedir, filename)
+
+        fig = csde.io.imread(test_diag) # Read in float and raw pixel images
+        raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
+
+        panels = csde.actions.segment(raw_fig)
+        print('Segmented panel number : %s ' % len(panels))
+
+        labels, diags = csde.actions.classify_kmeans(panels)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        all_panels = labels + diags
+        print('After processing : %s' % len(all_panels))
+
+        # Show diagrams in blue
+        for panel in diags:
+
+            # Create output image
+            out_fig, ax = plt.subplots(figsize=(10, 6))
+            ax.imshow(panel.fig.img)
+
+            ax.set_axis_off()
+            plt.show()
+
+    def test_diag_clean_all(self):
+
+        test_path = examples_dir
+        test_imgs = os.listdir(test_path)
+        for img_path in test_imgs:
+            self.do_diag_clean(img_path, filedir=test_path)
+
+    def test_diag_clean_1(self):
+        self.do_diag_clean('S0143720816301681_gr1.jpg')
+
+    def test_diag_clean_2(self):
+        self.do_diag_clean('S0143720816301565_gr1.jpg', filedir=r_group_diags_dir)
+
+
     # Testing sementation is sucessful
     def do_segmentation(self, filename, filedir=examples_dir):
         '''
@@ -51,18 +96,14 @@ class TestSystem(unittest.TestCase):
         panels = csde.actions.segment(raw_fig)
         print('Segmented panel number : %s ' % len(panels))
 
-        # Assign the pixel ratios
-        for panel in panels:
-            panel.pixel_ratio = csde.validate.pixel_ratio(fig, panel)
-
         labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags, diag_fig = csde.actions.preprocessing(labels, diags, fig)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
         all_panels = labels + diags
         print('After processing : %s' % len(all_panels))
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
-        ax.imshow(diag_fig.img)
+        ax.imshow(fig.img)
 
         # Show diagrams in blue
         for panel in diags:
@@ -148,8 +189,12 @@ class TestSystem(unittest.TestCase):
     def test_segmentation_r_group_diags_img1(self):
         self.do_segmentation('S0143720816301565_gr1.jpg', r_group_diags_dir)
 
-    def test_segmentation_r_group_diags_img1(self):
+    def test_segmentation_r_group_diags_img2(self):
         self.do_segmentation('S0143720816302054_sc1.jpg', filedir=r_group_diags_dir)
+
+    def test_segmentation_r_group_diags_img3(self):
+
+        self.do_segmentation('S0143720816301401_gr5.jpg', r_group_diags_dir)
 
 
     def do_grouping_by_ocr(self):

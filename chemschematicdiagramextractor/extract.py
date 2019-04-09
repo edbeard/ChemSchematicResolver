@@ -46,7 +46,7 @@ def extract_diagram(filename, debug=False):
     labels, diags = classify_kmeans(panels)
 
     # Proprocess image (eg merge labels that are small into larger labels)
-    labels, diags, diag_fig = preprocessing(labels, diags, fig)
+    labels, diags = preprocessing(labels, diags, fig)
 
     if debug is True:
         # Create output image
@@ -86,7 +86,7 @@ def extract_diagram(filename, debug=False):
         diag = detect_r_group(diag)
 
         # Get SMILES for output
-        smiles, r_smiles = get_smiles(diag, diag_fig, smiles, r_smiles)
+        smiles, r_smiles = get_smiles(diag, smiles, r_smiles)
 
     print("The results are :")
     print('R-smiles %s' % r_smiles)
@@ -106,19 +106,19 @@ def extract_diagram(filename, debug=False):
     return output
 
 
-def get_smiles(diag, fig, smiles, r_smiles):
+def get_smiles(diag, smiles, r_smiles):
     """ Identifies diagrams containing R-group"""
 
     # Resolve R-groups if detected
     if len(diag.label.r_group) > 0:
-        r_smiles_group = get_rgroup_smiles(diag, fig)
+        r_smiles_group = get_rgroup_smiles(diag)
         for smile in r_smiles_group:
             label_cand_str = [cand.text for cand in smile[0]]
             r_smiles.append((label_cand_str, smile[1]))
 
     # Resolve diagram normally if no R-groups - should just be one smile
     else:
-        smile = read_diagram_pyosra(diag, fig)
+        smile = read_diagram_pyosra(diag)
         label_raw = diag.label.text
         label_cand_str = [clean_output(cand.text) for cand in label_raw]
 

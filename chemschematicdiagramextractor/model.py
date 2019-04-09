@@ -164,9 +164,10 @@ class Panel(Rect):
 class Diagram(Panel):
     """ Chemical Schematic Diagram that is identified"""
 
-    def __init__(self, *args, label=None, smile=None):
+    def __init__(self, *args, label=None, smile=None, fig=None):
         self._label = label
         self._smile = smile
+        self._fig = fig
         super(Diagram, self).__init__(*args)
 
     @property
@@ -184,6 +185,15 @@ class Diagram(Panel):
     @smile.setter
     def smile(self, smile):
         self._smile = smile
+
+    @property
+    def fig(self):
+        """ Cropped Figure object of the specific diagram"""
+        return self._fig
+
+    @fig.setter
+    def fig(self, fig):
+        self._fig = fig
 
     def compass_position(self, other):
         """ Determines the compass position (NSEW) of other relative to self"""
