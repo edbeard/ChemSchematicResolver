@@ -32,7 +32,7 @@ from sklearn.cluster import KMeans
 # TODO : rename after removing cmd line read diagram logic
 import osra_rgroup
 
-from .model import Panel, Diagram, Label, Rect, Graph
+from .model import Panel, Diagram, Label, Rect, Graph, Figure
 from .ocr import get_text, get_sentences, get_words, PSM, LABEL_WHITELIST
 from .io import imsave, imdel
 from .parse import LabelParser
@@ -59,8 +59,8 @@ def crop(img, left=None, right=None, top=None, bottom=None):
     right = min(width, width if right is None else right)
     top = max(0, 0 if top is None else top)
     bottom = min(height, height if bottom is None else bottom)
-    img = img[top: bottom, left : right ]
-    return img
+    out_img = img[top: bottom, left : right ]
+    return out_img
 
 
 def binarize(fig, threshold=0.85):
@@ -162,12 +162,12 @@ def relabel_panels(panels):
     return panels
 
 
-def segment(fig):
+def segment(fig, size=20):
     """ Segments image """
 
     bin_fig = binarize(fig)
 
-    closed_fig = binary_close(bin_fig)
+    closed_fig = binary_close(bin_fig, size)
 
     fill_img = binary_floodfill(closed_fig)
     tag_img, no_tagged = binary_tag(fill_img)
@@ -189,7 +189,7 @@ def preprocessing(labels, diags, fig):
     # Remove repeating unit indicators
     labels, diags = get_repeating_unit(labels, diags, fig)
 
-    diag_fig = get_diagram_numbers(diags, fig)
+    diag_fig = remove_diag_pixel_islands(diags, fig)
 
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
@@ -209,12 +209,41 @@ def get_diagram_numbers(diags, fig):
         for token in diag_text:
             if token.text in '123456789':
                 print("Numeral sucessfully extracted %s" % token.text)
-                num_bbox.append((token.left, token.right, token.top, token.bottom))
+                num_bbox.append((diag.left + token.left, diag.left + token.right,
+                                 diag.top + token.top, diag.top + token.bottom))
 
     # Make a cleaned copy of image to be used when resolving diagrams
     diag_fig = copy.deepcopy(fig)
 
     for bbox in num_bbox:
+        diag_fig.img[bbox[2]:bbox[3], bbox[0]:bbox[1]] = np.ones(3)
+
+    return diag_fig
+
+
+def remove_diag_pixel_islands(diags, fig):
+    """ Removes all small pixel islands from the diagram """
+
+    sub_bbox = []
+
+    for diag in diags:
+
+        diag_img = Figure(crop(fig.img, diag.left, diag.right, diag.top, diag.bottom))
+        sub_panels = segment(diag_img, size=13)
+
+        panel_areas = [panel.area for panel in sub_panels]
+        diag_area = max(panel_areas)
+
+        sub_panels = [panel for panel in sub_panels if panel.area != diag_area]
+
+        sub_bbox = sub_bbox + [(diag.left + panel.left, diag.left + panel.right,
+                                diag.top + panel.top, diag.top + panel.bottom) for panel in sub_panels]
+
+
+    # Make a cleaned copy of image to be used when resolving diagrams
+    diag_fig = copy.deepcopy(fig)
+
+    for bbox in sub_bbox:
         diag_fig.img[bbox[2]:bbox[3], bbox[0]:bbox[1]] = np.ones(3)
 
     return diag_fig
