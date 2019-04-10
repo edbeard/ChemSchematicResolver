@@ -798,9 +798,15 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     :rtype List[List[str]]
     """
 
+    size = 5
     img = convert_greyscale(fig.img)
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
-    text = get_text(cropped_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
+    padded_img = pad(cropped_img, size, mode='constant', constant_values=(1, 1))
+    # import matplotlib.pyplot as plt
+    # out_fig, ax = plt.subplots(figsize=(10, 6))
+    # ax.imshow(padded_img)
+    # plt.show()
+    text = get_text(padded_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
     raw_sentences = get_sentences(text)
 
     if len(raw_sentences) is not 0:
@@ -854,11 +860,11 @@ def read_diagram_pyosra(diag):
     return smile
 
 
-def clean_output(smile):
+def clean_output(text):
     """ Remove whitespace and newline characters"""
 
-    smile = smile.replace(' ', '')
-    return smile.replace('\n', '')
+    text = text.replace(' ', '')
+    return text.replace('\n', '')
 
 
 def get_diag_and_label(img):

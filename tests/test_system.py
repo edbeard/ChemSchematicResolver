@@ -37,7 +37,8 @@ class TestSystem(unittest.TestCase):
     # Testing that the images are being cleaned of floating pixels
     def do_diag_clean(self, filename, filedir=examples_dir):
         """
-        Tests that rouge pixel islands are removed for all diagrams in filename
+        Tests that rouge pixel islands are removed for all diagrams in filename.
+        Displays the individual diagram areas for human inspection
         :param filename
         :return:
         """
@@ -66,6 +67,10 @@ class TestSystem(unittest.TestCase):
             plt.show()
 
     def test_diag_clean_all(self):
+        """
+        Test all diagrams in train_imgs
+        :return:
+        """
 
         test_path = examples_dir
         test_imgs = os.listdir(test_path)
@@ -82,7 +87,7 @@ class TestSystem(unittest.TestCase):
     # Testing sementation is sucessful
     def do_segmentation(self, filename, filedir=examples_dir):
         '''
-        Tests bounding box assignment for filename
+        Tests bounding box assignment for filename, and kmeans classification into diagrams (blue) and labels (red)
 
         :param filename:
         :return:
@@ -196,18 +201,11 @@ class TestSystem(unittest.TestCase):
 
         self.do_segmentation('S0143720816301401_gr5.jpg', r_group_diags_dir)
 
-
-    def do_grouping_by_ocr(self):
-        '''
-        Attempts to identify labels using the ocr module
-        :return:
-        '''
-        pass
-
-            # Testing grouping of diagram - label pairs is correct
+    # Testing grouping of diagram - label pairs is correct
     def do_grouping(self, filename, filedir=examples_dir):
         '''
-        Tests bounding box assignment for filename
+        Tests grouping of label-diagram pairs, where label and diagram have the same coloured bbox
+        To be checked by a human
 
         :param filename:
         :return:
@@ -218,27 +216,23 @@ class TestSystem(unittest.TestCase):
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
         fig_bbox = fig.get_bounding_box()
-        raw_fig = csde.io.imread(test_diag, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
+        # Segment and classify diagrams
         panels = csde.actions.segment(bin_fig)
         labels, diags = csde.actions.classify_kmeans(panels)
+
+        # Preprocessing cleaning and merging
         labels, diags = csde.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-       # labelled_diags = csde.actions.classify_kruskal_after_kmeans(labels, diags)
+        # Assign labels to diagrams
         labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
-
-
-        # panels = csde.actions.relabel_panels(panels)
-        # diags, labels = csde.actions.classify_kruskal(panels)
-        # labelled_diags = csde.actions.label_kruskal(diags, labels)
-        #labelled_diags = csde.actions.label_diags(diags, labels)
 
         colours = iter(['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
 
@@ -257,15 +251,12 @@ class TestSystem(unittest.TestCase):
         ax.set_axis_off()
         plt.show()
 
-
     def test_grouping_all(self):
-
         test_path = examples_dir
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             print(img_path)
             self.do_grouping(img_path, filedir=test_path)
-
 
     def test_grouping1(self):
         self.do_grouping('S014372081630119X_gr1.jpg')
@@ -303,30 +294,29 @@ class TestSystem(unittest.TestCase):
     def test_grouping_markush(self):
         self.do_grouping('S0143720816300286_gr1.jpg')
 
-
     def do_ocr(self, filename, filedir=examples_dir):
-        """ Tests the OCR recognition """
-
+        """ Tests the OCR recognition of labels."""
 
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
         fig = csde.io.imread(test_diag)
-        raw_fig = csde.io.imread(test_diag, raw=True)
+        fig_bbox = fig.get_bounding_box()
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
+        # Segment and classify diagrams and labels
         panels = csde.actions.segment(bin_fig)
         labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, bin_fig)
+        labels, diags = csde.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        labelled_diags = csde.actions.label_diags(diags, labels)
-
+        # Assign labels to diagrams
+        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
@@ -348,9 +338,8 @@ class TestSystem(unittest.TestCase):
             ax.add_patch(label_rect)
 
             label = csde.actions.read_label(fig, label)
-            label_strings = [label.text for label in label.text]
-            output_label = ' '.join(label_strings)
-            labels_text.append(output_label)
+            label_strings = [csde.actions.clean_output(sentence.text) for sentence in label.text]
+            labels_text.append(label_strings)
             print("Label %s : %s " % (label.tag, labels_text))
 
         ax.set_axis_off()
@@ -367,73 +356,71 @@ class TestSystem(unittest.TestCase):
 
     def test_ocr1(self):
         labels_text = self.do_ocr('S014372081630119X_gr1.jpg')
-        labels_text = [text.replace('\n', '') for text in labels_text]
-        gold = ['EtNAPH', 'MeNAPH: R=CH3 MeONAPH: R=OCH3']
-        for x in gold:
-            self.assertIn(x, labels_text)
+        gold = [['MeNAPH:R=CH3', 'MeONAPH:R=OCH3'], ['EtNAPH']]
+        self.assertListEqual(gold, labels_text)
 
     # TODO : Update all OCR tests to reflect new format
 
     def test_ocr2(self):
         labels_text = self.do_ocr('S014372081630122X_gr1.jpg')
-        gold = [[['Q1']], [['Q2']], [['Q3']], [['Q4']]]
-        for x in gold:
-            self.assertIn(x, labels_text)
+        gold = [['Q4'], ['Q1'], ['Q2'], ['Q3']]
+        self.assertEqual(gold, labels_text)
 
     def test_ocr3(self):
+        # Currently failing - not getting B in the second label
         labels_text = self.do_ocr('S014372081630167X_sc1.jpg')
-        gold = [[['PC71BM']], [['TPE-SQ']]]
-        for x in gold:
-            self.assertIn(x, labels_text)
+        gold = [['TPE-SQ'], ['PC71BM']]
+        self.assertEqual(gold, labels_text)
 
     def test_ocr4(self):
         labels_text = self.do_ocr('S014372081730116X_gr8.jpg')
-        gold = [[['J51']], [['PDBT-T1']], [['J61']], [['R=2-ethylhexyl'], ['PBDTTT-E-T']], [['R=2-ethylhexyl'], ['PTB7-Th']],
-                [['R=2-ethylhexyl'], ['PBDB-T']], [['R=2-ethylhexyl'],['PBDTTT-C-T']]]
-        for x in gold:
-            self.assertIn(x, labels_text)
+        gold = [['J51'], ['PDBT-T1'], ['J61'], ['R=2-ethylhexyl', 'PBDB-T'], ['R=2-ethylhexyl', 'PBDTTT-E-T'], ['R=2-ethylhexyl', 'PTB7-Th'],
+                ['R=2-ethylhexyl', 'PBDTTT-C-T']]
+        for item in gold:
+            self.assertIn(item, labels_text)
 
     def test_ocr5(self):
         labels_text = self.do_ocr('S0143720816300201_sc2.jpg')
-        gold = [[['9', '(>99%)']], [['1','(82%)']], [['3','(86%)']], [['7','(94%)']],
-                [['4','(78%)']], [['5','(64%)']], [['2','(78%)']], [['6','(75%)']], [['8','(74%)']]]
+        gold = [['9(>99%)'], ['1(82%)'], ['3(86%)'], ['7(94%)'],
+                ['4(78%)'], ['5(64%)'], ['2(78%)'], ['6(75%)'], ['8(74%)']]
         for x in gold:
             self.assertIn(x, labels_text)
 
     def test_ocr6(self):
         labels = self.do_ocr('S0143720816300274_gr1.jpg')
-        gold = [[['8c']], [['8b']], [['8a']], [['7c']], [['7b']], [['7a']]]
+        gold = [['8c'], ['8b'], ['8a'], ['7c'], ['7b'], ['7a']]
         for x in gold:
             self.assertIn(x, labels)
 
     def test_ocr7(self):
         labels = self.do_ocr('S0143720816300419_sc1.jpg')
-        gold = [[['DDOF']], [['DPF']], [['NDOF']], [['PDOF']]]
+        gold = [['DDOF'], ['DPF'], ['NDOF'], ['PDOF']]
         for x in gold:
             self.assertIn(x, labels)
 
     def test_ocr8(self):
         labels = self.do_ocr('S0143720816300559_sc2.jpg')
-        gold = [[['1']], [['2']], [['3']]]
+        gold = [['1'], ['2'], ['3']]
         for x in gold:
             self.assertIn(x, labels)
 
     def test_ocr9(self):
         labels = self.do_ocr('S0143720816300821_gr2.jpg') # Need to add greyscale
-        gold = [[['9']], [['10']]]
+        gold = [['9'], ['10']]
         for x in gold:
             self.assertIn(x, labels)
 
     def test_ocr10(self):
         # IR dye doesn't work
         labels = self.do_ocr('S0143720816300900_gr2.jpg')
-        gold = [[['ICG']], [['Compound','10']], [['Compound','13']], [['Compound','11']], [['ZW800-1']], [['Compound','12']]]
+        gold = [['ICG'], ['Compound10'], ['Compound13'], ['Compound11'], ['ZW800-1'], ['Compound12']]
         for x in gold:
             self.assertIn(x, labels)
 
-    def test_ocr_markush_img(self):
-        labels = self.do_ocr('S0143720816301115_r75.jpg')
-        gold = [[['PI1-AP']], [['PI1-TMP']], [['PIl-SZ']]]
+    def test_ocr11(self):
+        # Currently failing - can't detect some :
+        labels = self.do_ocr('S0143720816301115_gr1.jpg')
+        gold = [['1:R1=R2=H:TQEN'], ['2:R1=H,R2=OMe:T(MQ)EN'], ['3:R1=R2=OMe:T(TMQ)EN']]
         for x in gold:
             self.assertIn(x, labels)
 
