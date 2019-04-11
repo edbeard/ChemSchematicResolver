@@ -847,9 +847,12 @@ def read_diagram(fig, diag):
 def read_diagram_pyosra(diag):
     """ Converts a diagram to SMILES using PYOSRA"""
 
+    # Add some padding to image to help resolve characters on the edge
+    padded_img = pad(diag.fig.img, ((5,5), (5,5), (0, 0)), mode='constant', constant_values=1)
+
     # Save a temp image
     temp_img_fname = 'osra_temp.jpg'
-    imsave(temp_img_fname, diag.fig.img)
+    imsave(temp_img_fname, padded_img)
 
     # Run osra on temp image
     smile = osra_rgroup.read_diagram(temp_img_fname)

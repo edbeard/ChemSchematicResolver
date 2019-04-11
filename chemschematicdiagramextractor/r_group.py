@@ -22,7 +22,9 @@ from . import io
 from . import actions
 from .model import RGroup
 from .ocr import ASSIGNMENT, SEPERATORS, CONCENTRATION
+
 import re
+from skimage.util import pad
 
 from chemdataextractor.doc.text import Token
 
@@ -183,8 +185,11 @@ def filter_repeated_labels(r_groups):
 def get_rgroup_smiles(diag, cleanchars='()'):
     """ Uses modified version of OSRA to get SMILES for multiple """
 
+    # Add some padding to image to help resolve characters on the edge
+    padded_img = pad(diag.fig.img, ((5,5), (5,5), (0, 0)), mode='constant', constant_values=1)
+
     # Save a temp image
-    io.imsave('r_group_temp.jpg', diag.fig.img)
+    io.imsave('r_group_temp.jpg', padded_img)
 
     osra_input = []
     label_cands = []
