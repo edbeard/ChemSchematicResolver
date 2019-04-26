@@ -35,7 +35,7 @@ import osra_rgroup
 from .model import Panel, Diagram, Label, Rect, Graph, Figure
 from .ocr import get_text, get_sentences, get_words, PSM, LABEL_WHITELIST
 from .io import imsave, imdel
-from .parse import LabelParser
+from .parse import LabelParser, ChemSchematicDiagramExtractorTokeniser
 
 log = logging.getLogger(__name__)
 
@@ -811,7 +811,7 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
 
     if len(raw_sentences) is not 0:
         # Tag each sentence
-        tagged_sentences = [Sentence(sentence, parsers=[LabelParser()]) for sentence in raw_sentences]
+        tagged_sentences = [Sentence(sentence, word_tokenizer=ChemSchematicDiagramExtractorTokeniser(), parsers=[LabelParser()]) for sentence in raw_sentences]
     else:
         tagged_sentences = []
     label.text = tagged_sentences
