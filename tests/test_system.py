@@ -769,6 +769,30 @@ class TestSystem(unittest.TestCase):
 
         self.assertEqual(gold, smiles)
 
+    def test_label_smile_resolution14(self):
+        smiles = self.do_label_smile_resolution('S0143720816301115_gr4.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = [(['14:1-isoTQTACN'], 'n1ccc2c(c1CN1CCN(Cc3nccc4ccccc34)CCN(CC1)Cc1c3ccccc3ccn1)cccc2'),
+            (['11'], 'c1cc(nc2c1cccc2)CN1CCN(Cc2nc3c(cc2)cccc3)CCN(CC1)Cc1ccc2ccccc2n1'),
+            (['15:6-MeOTQTACN'], 'c1c(cc2c(c1)nc(cc2)CN1CCN(Cc2nc3c(cc2)cc(OC)cc3)CCN(CC1)Cc1ccc2cc(OC)ccc2n1)OC'),
+            (['12'], 'N1CCNCCN(CC1)Cc1ccc2ccccc2n1'),
+            (['13'], 'C(N1CCN(Cc2nc3ccccc3cc2)CCSCC1)c1nc2c(cc1)cccc2')]
+
+        self.assertEqual(gold, smiles)
+
+    def test_label_smile_resolution15(self):
+        # Currently broken - need to improve resolution of colons
+
+        smiles = self.do_label_smile_resolution('S0143720816301115_gr1.jpg')
+        print('extracted Smiles are : %s' % smiles)
+
+        gold = [(['1'], '*c1c2ccc(CN(CCN(Cc3nc4cc(c(c(c4cc3)*)*)*)Cc3nc4c(cc3)c(c(c(c4)*)*)*)Cc3ccc4c(*)c(*)c(*)cc4n3)nc2cc(*)c1*')
+            ([], '*c1c2ccc(CN(CCN(Cc3nc4cc(c(c(c4cc3)*)*)*)Cc3nc4c(cc3)c(c(c(c4)*)*)*)Cc3ccc4c(*)c(*)c(*)cc4n3)nc2cc(*)c1*'),
+            (['3', 'T(TMQ)EN'], '*c1c2ccc(CN(CCN(Cc3nc4cc(c(c(c4cc3)*)OC)*)Cc3nc4c(cc3)c(c(c(c4)*)OC)*)Cc3ccc4c(*)c(OC)c(*)cc4n3)nc2cc(*)c1OC')]
+
+        self.assertEqual(gold, smiles)
+
     def do_osra(self, filename):
         """ Tests the OSRA chemical diagram recognition """
 
