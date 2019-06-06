@@ -162,7 +162,7 @@ def relabel_panels(panels):
     return panels
 
 
-def segment(fig, size=20):
+def segment(fig, size=3):
     """ Segments image """
 
     bin_fig = binarize(fig)
