@@ -101,7 +101,7 @@ class TestSystem(unittest.TestCase):
         fig = csde.io.imread(test_diag) # Read in float and raw pixel images
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
 
-        panels = csde.actions.segment(raw_fig)
+        panels = csde.actions.segment(raw_fig, size=3)
         print('Segmented panel number : %s ' % len(panels))
 
         labels, diags = csde.actions.classify_kmeans(panels)
@@ -203,6 +203,9 @@ class TestSystem(unittest.TestCase):
     def test_segmentation_r_group_diags_img3(self):
 
         self.do_segmentation('S0143720816301401_gr5.jpg', r_group_diags_dir)
+
+    def test_segmentation_13(self):
+        self.do_segmentation('10.1039_C4TC01753F_fig1.gif', filedir='/home/edward/github/csde-development/csd')
 
     # Testing grouping of diagram - label pairs is correct
     def do_grouping(self, filename, filedir=examples_dir):

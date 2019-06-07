@@ -16,6 +16,138 @@ from .validate import is_false_positive
 import copy
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
+import os
+import urllib
+import cirpy
+from molvs import standardize_smiles
+
+from chemdataextractor import Document
+from chemdataextractor.text.normalize import chem_normalize
+
+
+def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+    """ Extracts chemical records from a document and identifies chemcial schematic diagrams.
+    Then substitutes in if the label was found in a record
+
+    :param filename: Location of document to be extracted
+    :param do_extract : Boolean indicating whether images should be extracted
+    :param output: Directory to store extracted images
+
+    : return : Dictionary of chemical records
+    """
+
+    # Extract the raw records from CDE
+    doc = Document.from_file(filename)
+
+    figs = doc.figures
+
+    # Identify image candidates
+    csds = find_image_candidates(figs, filename)
+
+    # Donwload figures locally
+    fig_paths = download_figs(csds, output)
+    print("All relevant figures from %s downloaded sucessfully" % filename)
+
+    if do_extract:
+        # Run CSDE
+        results = []
+        for path in fig_paths:
+            try:
+                results.append(extract_diagram(path))
+            except:
+                pass
+        # Subsitute smiles for labels
+
+        subsitute_labels(doc.records.serialize(), results)
+
+        return results
+
+
+def subsitute_labels(records, results):
+    """ Looks for label candidates in the document records and subsitutes where appropriate"""
+
+    # TODO : make it so this substitutes in the CDE records with new field smiles: ['diagram': ''] or something...
+
+    doc_named_records = []
+
+    record_labels = [record for record in records if 'labels' in record.keys()]
+
+    # Get all records that contain common labels
+    for diag_result in results:
+        for label_cands, smile in diag_result:
+            for record_label in record_labels:
+                overlap = [(record_label, label_cand, smile)  for label_cand in label_cands if label_cand in record_label['labels']]
+                doc_named_records += overlap
+
+    print(doc_named_records)
+    #
+    for doc_record, diag_label, diag_smile in doc_named_records:
+        for name in (doc_record['names']):
+            try:
+                doc_smile = cirpy.resolve(chem_normalize(name).encode('utf-8'), 'smiles')
+                doc_smile = standardize_smiles(doc_smile)
+                diag_smile = standardize_smiles(diag_smile, 'smiles')
+            except:
+                pass
+            print('Doc smile: %s ' % doc_smile)
+            print('Diag smile: %s \n' % diag_smile)
+
+
+
+def download_figs(figs, output):
+    """ Downloads figures from url
+
+    :param figs: List of tuples in form figure metadat (Filename, figure id, url to figure, caption)
+    :param output: Location of output images
+    """
+
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+    fig_paths = []
+
+    for file, id, url, caption in figs:
+
+        img_format = url.split('.')[-1]
+        print('Downloading %s image from %s' % (img_format, url))
+        filename = file.split('/')[-1].rsplit('.', 1)[0] + '_' + id + '.' + img_format
+        path = os.path.join(output, filename)
+
+        print("Downloading %s..." % filename)
+        if not os.path.exists(path):
+            urllib.request.urlretrieve(url, path) # Saves downloaded image to file
+        else:
+            print("File exists! Going to next image")
+
+        fig_paths.append(path)
+
+    return fig_paths
+
+
+def find_image_candidates(figs, filename):
+    """ Returns a list of csd figures
+
+    :param figs: ChemDataExtractor figure objects
+    :return: List of figure metadata (Filename, figure id, url to figure, caption)
+    :rtype:   list[tuple[string, string, string, string]]
+    """
+    csd_imgs = []
+
+    for fig in figs:
+        detected = False  # Used to avoid processing images twice
+        records = fig.records
+        caption = fig.caption
+        for record in records:
+            if detected is True:
+                break
+
+            rec = record.serialize()
+            if ['csd'] in rec.values():
+                detected = True
+                print('Chemical schematic diagram instance found!')
+                csd_imgs.append((filename, fig.id, fig.url, caption.text.replace('\n', ' ')))
+
+    return csd_imgs
 
 
 def extract_diagram(filename, debug=False):
