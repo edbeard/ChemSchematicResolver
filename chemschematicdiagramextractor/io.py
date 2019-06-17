@@ -3,7 +3,7 @@
 Image IO
 ========
 Reading and writing images.
-Editted from Matt Swains FDE io.
+Edited from Matt Swains FDE io.
 
 """
 

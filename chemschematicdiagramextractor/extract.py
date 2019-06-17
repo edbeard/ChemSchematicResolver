@@ -19,7 +19,7 @@ import matplotlib.patches as mpatches
 import os
 import urllib
 import cirpy
-from molvs import standardize_smiles
+#from molvs import standardize_smiles
 
 from chemdataextractor import Document
 from chemdataextractor.text.normalize import chem_normalize
@@ -85,8 +85,8 @@ def subsitute_labels(records, results):
         for name in (doc_record['names']):
             try:
                 doc_smile = cirpy.resolve(chem_normalize(name).encode('utf-8'), 'smiles')
-                doc_smile = standardize_smiles(doc_smile)
-                diag_smile = standardize_smiles(diag_smile, 'smiles')
+                # doc_smile = standardize_smiles(doc_smile)
+                # diag_smile = standardize_smiles(diag_smile, 'smiles')
             except:
                 pass
             print('Doc smile: %s ' % doc_smile)

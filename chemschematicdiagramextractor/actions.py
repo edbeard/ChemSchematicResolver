@@ -17,10 +17,12 @@ import logging
 import numpy as np
 from skimage.color import rgb2gray
 from skimage import morphology
-from skimage.util import pad, crop
-from skimage.util import crop as crop_skimage
-from skimage.morphology import binary_closing, disk
+from skimage.util import pad
+from skimage.morphology import binary_closing, disk, skeletonize
 from skimage.measure import regionprops
+from skimage.util import crop as crop_skimage
+
+
 import subprocess
 import os
 import itertools
@@ -36,6 +38,7 @@ from .model import Panel, Diagram, Label, Rect, Graph, Figure
 from .ocr import get_text, get_sentences, get_words, PSM, LABEL_WHITELIST
 from .io import imsave, imdel
 from .parse import LabelParser, ChemSchematicDiagramExtractorTokeniser
+
 
 log = logging.getLogger(__name__)
 
@@ -61,6 +64,17 @@ def crop(img, left=None, right=None, top=None, bottom=None):
     bottom = min(height, height if bottom is None else bottom)
     out_img = img[top: bottom, left : right ]
     return out_img
+
+def pixel_ratio(fig, diag):
+    """ Calculates the ratio of 'on' pixels to bbox area for binary image
+
+    :param numpy.ndarray img: Input image
+    """
+
+    cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
+    ones = np.count_nonzero(cropped_img)
+    all_pixels = np.size(cropped_img)
+    return ones / all_pixels
 
 
 def binarize(fig, threshold=0.85):
@@ -162,12 +176,38 @@ def relabel_panels(panels):
     return panels
 
 
-def segment(fig, size=3):
+def segment(fig, size=20):
     """ Segments image """
 
     bin_fig = binarize(fig)
 
-    closed_fig = binary_close(bin_fig, size)
+    skel_fig = copy.deepcopy(bin_fig)
+
+    skel_fig.img = skeletonize(bin_fig.img)
+    bbox = bin_fig.get_bounding_box()
+    skel_pixel_ratio = pixel_ratio(skel_fig, bbox)
+
+    log.debug(" The skeletonized pixel ratio is %s" % skel_pixel_ratio)
+
+    if skel_pixel_ratio > 0.025:
+        kernel = 4
+        closed_fig = binary_close(bin_fig, size=kernel)
+        log.debug("Segmentation kernel size = %s" % kernel)
+
+    elif 0.02 < skel_pixel_ratio <= 0.025:
+        kernel = 6
+        closed_fig = binary_close(bin_fig, size=kernel)
+        log.debug("Segmentation kernel size = %s" % kernel)
+
+    elif 0.015 < skel_pixel_ratio <= 0.02:
+        kernel = 10
+        closed_fig = binary_close(bin_fig, size=kernel)
+        log.debug("Segmentation kernel size = %s" % kernel)
+
+    else:
+        kernel = 15
+        closed_fig = binary_close(bin_fig, size=kernel)
+        log.debug("Segmentation kernel size = %s" % kernel)
 
     fill_img = binary_floodfill(closed_fig)
     tag_img, no_tagged = binary_tag(fill_img)

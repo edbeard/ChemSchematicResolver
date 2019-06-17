@@ -12,10 +12,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+
+from .actions import pixel_ratio, crop
 import logging
 
-from .actions import crop
-import numpy as np
 import re
 #import pybel
 
@@ -37,18 +37,6 @@ def is_false_positive(label_smile_tuple):
         return True
 
     return False
-
-
-def pixel_ratio(fig, diag):
-    """ Calculates the ratio of 'on' pixels to bbox area for binary image
-
-    :param numpy.ndarray img: Input image
-    """
-
-    cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
-    ones = np.count_nonzero(cropped_img)
-    all_pixels = np.size(cropped_img)
-    return ones / all_pixels
 
 
 def total_pixel_ratio(fig, diags):
