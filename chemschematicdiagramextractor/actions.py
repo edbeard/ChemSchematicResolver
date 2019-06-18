@@ -18,7 +18,8 @@ import numpy as np
 from skimage.color import rgb2gray
 from skimage import morphology
 from skimage.util import pad
-from skimage.morphology import binary_closing, disk, skeletonize
+from skimage.morphology import binary_closing, disk
+from skimage.morphology import skeletonize as skeletonize_skimage
 from skimage.measure import regionprops
 from skimage.util import crop as crop_skimage
 
@@ -62,13 +63,15 @@ def crop(img, left=None, right=None, top=None, bottom=None):
     right = min(width, width if right is None else right)
     top = max(0, 0 if top is None else top)
     bottom = min(height, height if bottom is None else bottom)
-    out_img = img[top: bottom, left : right ]
+    out_img = img[top: bottom, left: right]
     return out_img
 
-def pixel_ratio(fig, diag):
-    """ Calculates the ratio of 'on' pixels to bbox area for binary image
 
-    :param numpy.ndarray img: Input image
+def pixel_ratio(fig, diag):
+    """ Calculates the ratio of 'on' pixels to bbox area for binary figure
+
+    :param Figure : Input binary figure
+    :param Panel : Input rectangle
     """
 
     cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
@@ -87,8 +90,8 @@ def binarize(fig, threshold=0.85):
     :return: Binary image.
     :rtype: numpy.ndarray
     """
-
-    img = fig.img
+    bin_fig = copy.deepcopy(fig)
+    img = bin_fig.img
 
     # Skip if already binary
     if img.ndim <= 2 and img.dtype == bool:
@@ -97,10 +100,10 @@ def binarize(fig, threshold=0.85):
     img = convert_greyscale(img)
 
     # TODO: Investigate Niblack and Sauvola threshold methods
-    # Binarize with threshold (default of 0.9 empirically determined)
+    # Binarize with threshold (default of 0.85 empirically determined)
     binary = img < threshold
-    fig.img = binary
-    return fig
+    bin_fig.img = binary
+    return bin_fig
 
 
 def binary_close(fig, size=20):
@@ -176,16 +179,39 @@ def relabel_panels(panels):
     return panels
 
 
-def segment(fig, size=20):
+def skeletonize(fig):
+    """
+    Erode pixels down to skeleton of a figure's img object
+    :param fig :
+    :return: Figure : binarized figure
+    """
+
+    skel_fig = copy.deepcopy(fig)
+    skel_fig = binarize(skel_fig)
+    skel_fig.img = skeletonize_skimage(skel_fig.img)
+
+    return skel_fig
+
+
+def skeletonize_area_ratio(fig, panel):
+    """
+    Calculates the ratio of skeletonized image pixels to total number of pixels
+    :param fig: Input figure
+    :param panel: Original panel object
+    :return: Float : Ratio of skeletonized pixels to total area
+    """
+
+    skel_fig = skeletonize(fig)
+    return pixel_ratio(skel_fig, panel)
+
+
+def segment(fig):
     """ Segments image """
 
     bin_fig = binarize(fig)
 
-    skel_fig = copy.deepcopy(bin_fig)
-
-    skel_fig.img = skeletonize(bin_fig.img)
-    bbox = bin_fig.get_bounding_box()
-    skel_pixel_ratio = pixel_ratio(skel_fig, bbox)
+    bbox = fig.get_bounding_box()
+    skel_pixel_ratio = skeletonize_area_ratio(fig, bbox)
 
     log.debug(" The skeletonized pixel ratio is %s" % skel_pixel_ratio)
 
@@ -215,12 +241,12 @@ def segment(fig, size=20):
     return panels
 
 
-def classify_kmeans(panels):
+def classify_kmeans(panels, fig):
     """Takes the input images, then classifies through k means cluster of the panel area"""
 
     if len(panels) <= 1:
         raise Exception('Only one panel detected. Cannot cluster')
-    return get_labels_and_diagrams_k_means_clustering(panels)
+    return get_labels_and_diagrams_k_means_clustering(panels, fig)
 
 
 def preprocessing(labels, diags, fig):
@@ -384,10 +410,26 @@ def get_threshold(panels):
     return 1.5 * np.mean([panel.area for panel in panels])
 
 
-def get_labels_and_diagrams_k_means_clustering(panels):
+def get_labels_and_diagrams_k_means_clustering(panels, fig):
     """ Splits into labels and diagrams using kmeans clustering of area"""
 
-    all_params = np.array([[panel.perimeter / panel.area, panel.perimeter] for panel in panels])
+    # TODO : Choose clustering parameters. options are :
+    # Panel height and panel width
+    # Previous weighted panels for perimeter and area -> np.array([[panel.perimeter / panel.area, panel.perimeter] for panel in panels])
+    # Skeletonized area ratio
+    # Can consider 2 pronged (use skeletonize, unless big discrepency in areas and perimeter)
+
+    # Ratio of skeletonized pixels against the total number of pixels in the
+    skel_area_ratios = []
+
+    for panel in panels:
+        skel_area_ratios.append([skeletonize_area_ratio(fig, panel)]) #panel.height, panel.width])
+
+
+    all_params = np.array(skel_area_ratios)
+
+
+
     km = KMeans(n_clusters=2)
     clusters = km.fit(all_params)
 
