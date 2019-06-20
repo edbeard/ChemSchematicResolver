@@ -77,7 +77,8 @@ def pixel_ratio(fig, diag):
     cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
     ones = np.count_nonzero(cropped_img)
     all_pixels = np.size(cropped_img)
-    return ones / all_pixels
+    ratio = ones / all_pixels
+    return ratio
 
 
 def binarize(fig, threshold=0.85):
@@ -205,7 +206,7 @@ def skeletonize_area_ratio(fig, panel):
     return pixel_ratio(skel_fig, panel)
 
 
-def segment(fig):
+def segment(fig, noise_pixel_size=8):
     """ Segments image """
 
     bin_fig = binarize(fig)
@@ -238,6 +239,9 @@ def segment(fig):
     fill_img = binary_floodfill(closed_fig)
     tag_img, no_tagged = binary_tag(fill_img)
     panels = get_bounding_box(tag_img)
+
+    # Removing tiny pixel islands that are determined to be noise
+    panels = [panel for panel in panels if panel.area > noise_pixel_size]
     return panels
 
 
@@ -260,7 +264,13 @@ def preprocessing(labels, diags, fig):
     label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
-    return labels_converted, diags
+
+    # Relabelling all diagrams and labels
+    relabelled_panels = relabel_panels(labels_converted + diags)
+    out_labels = relabelled_panels[:len(labels_converted)]
+    out_diags = relabelled_panels[len(labels_converted):]
+
+    return out_labels, out_diags
 
 
 def get_diagram_numbers(diags, fig):
@@ -297,7 +307,7 @@ def remove_diag_pixel_islands(diags, fig):
 
         diag_fig = Figure(crop(clean_fig.img, diag.left, diag.right, diag.top, diag.bottom))
         seg_img = Figure(crop(clean_fig.img, diag.left, diag.right, diag.top, diag.bottom))
-        sub_panels = segment(seg_img, size=13)
+        sub_panels = segment(seg_img)
 
         panel_areas = [panel.area for panel in sub_panels]
         diag_area = max(panel_areas)
@@ -423,12 +433,9 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig):
     skel_area_ratios = []
 
     for panel in panels:
-        skel_area_ratios.append([skeletonize_area_ratio(fig, panel)]) #panel.height, panel.width])
-
+        skel_area_ratios.append([skeletonize_area_ratio(fig, panel)]) #panel.height, panel.width]
 
     all_params = np.array(skel_area_ratios)
-
-
 
     km = KMeans(n_clusters=2)
     clusters = km.fit(all_params)
@@ -436,7 +443,6 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig):
     group_1, group_2 =[], []
 
     for i, cluster in enumerate(clusters.labels_):
-        print(cluster)
         if cluster == 0:
             group_1.append(panels[i])
         else:
@@ -450,7 +456,7 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig):
         labels = group_1
 
     # Convert to appropriate types
-    labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels if label.area > 8]
+    labels = [Label(label.left, label.right, label.top, label.bottom, label.tag) for label in labels]
     diags = [Diagram(diag.left, diag.right, diag.top, diag.bottom, diag.tag) for diag in diags]
     return labels, diags
 
@@ -728,6 +734,7 @@ def merge_rect(rect1, rect2):
     bottom = max(rect1.bottom, rect2.bottom)
     return Rect(left, right, top, bottom)
 
+
 def get_duplicate_labelling(labelled_diags):
     """ Returns a set of diagrams which share a label"""
 
@@ -764,17 +771,93 @@ def label_diags(labels, diags, fig_bbox, rate=1):
         #Attempt looking 'South' for all diagrams (most common realtive label position)
         altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, 'S', fig_bbox) for diag in failed_diag_label]
         if len(get_duplicate_labelling(altered_sorting)) != 0:
-            return initial_sorting
+            altered_sorting = initial_sorting
+            pass
         else:
             return altered_sorting
+    else:
+        # Compass positions of labels relative to diagram
+        diag_compass = [diag.compass_position(diag.label) for diag in successful_diag_label if diag.label]
+        mode_compass = max(diag_compass, key=diag_compass.count)
 
-    # Compass positions of labels relative to diagram
-    diag_compass = [diag.compass_position(diag.label) for diag in successful_diag_label if diag.label]
-    mode_compass = max(diag_compass, key=diag_compass.count)
+        # Then, expand outwards in this direction for all failures.
+        altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, mode_compass, fig_bbox) for diag in failed_diag_label]
 
-    # Then, expand outwards in this direction for all failures.
-    altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, mode_compass, fig_bbox) for diag in failed_diag_label]
-    return altered_sorting + successful_diag_label
+        # Check for duplicates after relabelling
+        failed_diag_label = get_duplicate_labelling(altered_sorting)
+
+        # If no duplicates return all results
+        if len(failed_diag_label) == 0:
+            return altered_sorting + successful_diag_label
+
+    # Add non duplicates to successes
+    successful_diag_label.extend([diag for diag in altered_sorting if diag not in failed_diag_label])
+
+    # Remove duplicate results
+    diags_with_labels, diags_without_labels = remove_duplicates(failed_diag_label, fig_bbox)
+
+    return diags_with_labels + successful_diag_label
+
+
+def remove_duplicates(diags, fig_bbox, rate=1):
+    """
+    Removes the least likely of the duplicate results.
+    Likeliness is determined from the distance from the bounding box
+    :param diags: All detected diagrams with assigned labels
+    :param fig_bbox: Bounding box of the entire figure
+    :return output_diags, output_labelless_diags : List of diagrams with labels and without from duplicates
+    """
+
+    output_diags = []
+    output_labelless_diags = []
+
+    # Unique labels
+    unique_labels = set(diag.label for diag in diags if diag.label is not None)
+    diags_with_labels = [diag for diag in diags if diag.label is not None]
+
+    for label in unique_labels:
+
+        diags_with_this_label = [diag for diag in diags_with_labels if diag.label.tag == label.tag]
+
+        if len(diags_with_this_label) == 1:
+            output_diags.append(diags_with_this_label[0])
+            continue
+
+        diag_and_displacement = [] # List of diag-distance tuples
+
+        for diag in diags_with_this_label:
+
+            probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
+            found = False
+            max_threshold_width = fig_bbox.width
+            max_threshold_height = fig_bbox.height
+            rate_counter = 0
+
+            while found is False and (probe_rect.width < max_threshold_width or probe_rect.height < max_threshold_height):
+                # Increase border value each loop
+                probe_rect.right = probe_rect.right + rate
+                probe_rect.bottom = probe_rect.bottom + rate
+                probe_rect.left = probe_rect.left - rate
+                probe_rect.top = probe_rect.top - rate
+
+                rate_counter += rate
+
+                if probe_rect.overlaps(label):
+                    found = True
+                    diag_and_displacement.append((diag, rate_counter))
+
+        master_diag = min(diag_and_displacement, key=lambda x: x[1])[0]
+        output_diags.append(master_diag)
+
+        labelless_diags = [diag[0] for diag in diag_and_displacement if diag[0] is not master_diag]
+
+        for diag in labelless_diags:
+            diag.label = None
+
+        output_labelless_diags.extend(labelless_diags)
+
+    return output_diags, output_labelless_diags
+
 
 
 def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
