@@ -261,7 +261,7 @@ def preprocessing(labels, diags, fig):
 
     diags = remove_diag_pixel_islands(diags, fig)
 
-    label_candidates_horizontally_merged = merge_label_horizontally(labels)
+    label_candidates_horizontally_merged = labels #merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
 
@@ -421,7 +421,7 @@ def get_threshold(panels):
 
 
 def get_labels_and_diagrams_k_means_clustering(panels, fig):
-    """ Splits into labels and diagrams using kmeans clustering of area"""
+    """ Splits into labels and diagrams using kmeans clustering of the skeletonized area ratio."""
 
     # TODO : Choose clustering parameters. options are :
     # Panel height and panel width
@@ -607,7 +607,7 @@ def merge_loop_horizontal(panels):
                 and abs(a.height - b.height) < a.height:
 
             # Check that the distance between the edges of panels is not too large
-            if (0 < a.left - b.right < max(a.width, b.width))or (0 < (b.left - a.right) < max(a.width, b.width)):
+            if (0 < a.left - b.right < (min(a.width, b.width) / 4))or (0 < (b.left - a.right) < (min(a.width, b.width) / 4)):
 
                 merged_rect = merge_rect(a, b)
                 merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -784,7 +784,9 @@ def label_diags(labels, diags, fig_bbox, rate=1):
         altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, mode_compass, fig_bbox) for diag in failed_diag_label]
 
         # Check for duplicates after relabelling
-        failed_diag_label = get_duplicate_labelling(altered_sorting)
+        failed_diag_label = get_duplicate_labelling(altered_sorting + successful_diag_label)
+
+        successful_diag_label = [diag for diag in successful_diag_label if diag not in failed_diag_label]
 
         # If no duplicates return all results
         if len(failed_diag_label) == 0:
@@ -813,10 +815,10 @@ def remove_duplicates(diags, fig_bbox, rate=1):
 
     # Unique labels
     unique_labels = set(diag.label for diag in diags if diag.label is not None)
-    diags_with_labels = [diag for diag in diags if diag.label is not None]
 
     for label in unique_labels:
 
+        diags_with_labels = [diag for diag in diags if diag.label is not None]
         diags_with_this_label = [diag for diag in diags_with_labels if diag.label.tag == label.tag]
 
         if len(diags_with_this_label) == 1:
@@ -964,6 +966,7 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     """
 
     size = 5
+    img = fig.img
     img = convert_greyscale(fig.img)
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
     padded_img = pad(cropped_img, size, mode='constant', constant_values=(1, 1))

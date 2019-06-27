@@ -113,7 +113,10 @@ def get_label_candiates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bla
 
 
 def filter_repeated_labels(r_groups):
-    """ Checks if the same variable is present twice. If yes, this is an 'or' case so relative label assignment ensues"""
+    """
+     Checks if the same variable is present twice.
+    If yes, this is an 'or' case so relative label assignment ensues
+     """
 
     # Identify 'or' variables
     or_vars = []
@@ -121,7 +124,7 @@ def filter_repeated_labels(r_groups):
     unique_vars = set(vars)
     for test_var in unique_vars:
         if vars.count(test_var) > 1:
-            print('Identified "or" variable')
+            log.debug('Identified "or" variable')
             or_vars.append(test_var)
 
     # Get label candidates for r_groups containing this:
@@ -132,7 +135,7 @@ def filter_repeated_labels(r_groups):
         return r_groups
 
     remaining_r_groups = [r_group for r_group in r_groups if r_group.var not in or_vars]
-    label_cands = filtered_r_groups[0].label_candidates #  Get the label candidates for these vars (should be the same)
+    label_cands = filtered_r_groups[0].label_candidates # Get the label candidates for these vars (should be the same)
 
     # Prioritizing alphanumerics for relative label assignment
     alphanumeric_labels = [label for label in label_cands if ALPHANUMERIC_REGEX.match(label.text)]
@@ -280,7 +283,9 @@ def standardize_values(r_groups):
 
 
 def separate_duplicate_r_groups(r_groups):
-    """ Separate duplicate R-group variables into separate lists"""
+    """
+     Separate duplicate R-group variables into separate lists
+    """
 
     if len(r_groups) is 0:
         return r_groups
@@ -307,8 +312,6 @@ def separate_duplicate_r_groups(r_groups):
         for r_group in r_groups:
             if var == r_group.var:
                 vars_dict[var.text].append(r_group)
-
-    print(vars_dict)
 
     for i in range(len(vars_dict[var.text])):
         temp = []
