@@ -206,7 +206,7 @@ def skeletonize_area_ratio(fig, panel):
     return pixel_ratio(skel_fig, panel)
 
 
-def segment(fig, noise_pixel_size=8):
+def segment(fig):
     """ Segments image """
 
     bin_fig = binarize(fig)
@@ -241,16 +241,18 @@ def segment(fig, noise_pixel_size=8):
     panels = get_bounding_box(tag_img)
 
     # Removing tiny pixel islands that are determined to be noise
-    panels = [panel for panel in panels if panel.area > noise_pixel_size]
+    area_threshold = fig.get_bounding_box().area / 200
+    width_threshold = fig.get_bounding_box().width / 150
+    panels = [panel for panel in panels if panel.area > area_threshold or panel.width > width_threshold]
     return panels
 
 
-def classify_kmeans(panels, fig):
+def classify_kmeans(panels, fig, skel=True):
     """Takes the input images, then classifies through k means cluster of the panel area"""
 
     if len(panels) <= 1:
         raise Exception('Only one panel detected. Cannot cluster')
-    return get_labels_and_diagrams_k_means_clustering(panels, fig)
+    return get_labels_and_diagrams_k_means_clustering(panels, fig, skel)
 
 
 def preprocessing(labels, diags, fig):
@@ -261,7 +263,7 @@ def preprocessing(labels, diags, fig):
 
     diags = remove_diag_pixel_islands(diags, fig)
 
-    label_candidates_horizontally_merged = labels #merge_label_horizontally(labels)
+    label_candidates_horizontally_merged = merge_label_horizontally(labels)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
 
@@ -420,8 +422,13 @@ def get_threshold(panels):
     return 1.5 * np.mean([panel.area for panel in panels])
 
 
-def get_labels_and_diagrams_k_means_clustering(panels, fig):
-    """ Splits into labels and diagrams using kmeans clustering of the skeletonized area ratio."""
+def get_labels_and_diagrams_k_means_clustering(panels, fig, skel=True):
+    """ Splits into labels and diagrams using kmeans clustering of the skeletonized area ratio.
+    :param panels: panels objects to be clustered
+    :param fig: Figure containing panels
+    :param skel: Boolean indication the clustering parameters to use
+    :return labels and diagrams after clustering
+    """
 
     # TODO : Choose clustering parameters. options are :
     # Panel height and panel width
@@ -430,12 +437,15 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig):
     # Can consider 2 pronged (use skeletonize, unless big discrepency in areas and perimeter)
 
     # Ratio of skeletonized pixels against the total number of pixels in the
-    skel_area_ratios = []
+    cluster_params = []
 
     for panel in panels:
-        skel_area_ratios.append([skeletonize_area_ratio(fig, panel)]) #panel.height, panel.width]
+        if skel:
+            cluster_params.append([skeletonize_area_ratio(fig, panel)]) #panel.height, panel.width]
+        else:
+            cluster_params.append([panel.height])
 
-    all_params = np.array(skel_area_ratios)
+    all_params = np.array(cluster_params)
 
     km = KMeans(n_clusters=2)
     clusters = km.fit(all_params)
@@ -604,10 +614,10 @@ def merge_loop_horizontal(panels):
 
         # Check panels lie in roughly the same line, that they are of label size and similar height
         if abs(a.center[1] - b.center[1]) < 1.5 * a.height \
-                and abs(a.height - b.height) < a.height:
+                and abs(a.height - b.height) < min(a.height, b.height):
 
             # Check that the distance between the edges of panels is not too large
-            if (0 < a.left - b.right < (min(a.width, b.width) / 4))or (0 < (b.left - a.right) < (min(a.width, b.width) / 4)):
+            if (0 < a.left - b.right < (min(a.height, b.height) * 2)) or (0 < (b.left - a.right) < (min(a.height, b.height) * 2)):
 
                 merged_rect = merge_rect(a, b)
                 merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -634,8 +644,13 @@ def merge_loop_vertical(panels):
     # Merging labels that are in close proximity vertically
     for a, b in itertools.combinations(panels, 2):
 
-        if abs(a.center[0] - b.center[0]) < 0.5 * max(a.width, b.width) and abs(a.center[1] - b.center[1]) < 3 * max(a.height, b.height) \
-                and abs(a.height - b.height) < 0.3 * max(a.height, b.height) and abs(a.width - b.width) < 2 * max(a.width, b.width):
+        if (abs(a.left - b.left) < 3 * min(a.height, b.height) or abs(a.center[0] - b.center[0]) < 3 * min(a.height, b.height)) \
+                and abs(a.center[1] - b.center[1]) < 3 * min(a.height, b.height) \
+                and min(abs(a.top - b.bottom), abs(b.top - a.bottom)) < 2 * min(a.height, b.height):
+                # and abs(a.height - b.height) < 0.3 * max(a.height, b.height):
+
+        # if abs(a.center[0] - b.center[0]) < 0.5 * max(a.width, b.width) and abs(a.center[1] - b.center[1]) < 3 * max(a.height, b.height) \
+        #         and abs(a.height - b.height) < 0.3 * max(a.height, b.height) and abs(a.width - b.width) < 2 * max(a.width, b.width):
 
             merged_rect = merge_rect(a, b)
             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -648,7 +663,6 @@ def merge_loop_vertical(panels):
 
     output_panels = relabel_panels(output_panels)
 
-    print(output_panels)
     return output_panels
 
 

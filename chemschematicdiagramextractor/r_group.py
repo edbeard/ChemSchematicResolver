@@ -52,10 +52,10 @@ def detect_r_group(diag):
                 print('Found R-Group descriptor %s' % token.text)
                 if i > 0:
                     print('Variable candidate is %s' % sentence.tokens[i-1] )
-                if i < len(sentence.tokens):
+                if i < len(sentence.tokens) - 1:
                     print('Value candidate is %s' % sentence.tokens[i+1])
 
-                if 0 < i < len(sentence.tokens):
+                if 0 < i < len(sentence.tokens) - 1:
                     variable = sentence.tokens[i - 1]
                     value = sentence.tokens[i + 1]
                     var_value_pairs.append(RGroup(variable, value, []))
@@ -185,12 +185,14 @@ def filter_repeated_labels(r_groups):
     #
     # return output
 
+
 def get_rgroup_smiles(diag, cleanchars='()'):
     """ Uses modified version of OSRA to get SMILES for multiple """
 
     # Add some padding to image to help resolve characters on the edge
     padded_img = pad(diag.fig.img, ((5,5), (5,5), (0, 0)), mode='constant', constant_values=1)
 
+    #TODO : Save the image to the correct format here!!
     # Save a temp image
     io.imsave('r_group_temp.jpg', padded_img)
 
@@ -216,14 +218,13 @@ def get_rgroup_smiles(diag, cleanchars='()'):
 
         osra_input.append(token_dict)
         label_cands.append(tokens[0][2])
-        print(" Smiles resolved were:  %s" % smiles)
 
     # TODO : Attempt to resolve compound values using cirpy / OPSIN
 
     # Run osra on temp image
-    smiles = osra_rgroup.hack_osra_process_image(osra_input, input_file="r_group_temp.jpg")
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file="r_group_temp.jpg", verbose=True, debug=True)
 
-    io.imdel('r_group_temp.jpg')
+    # io.imdel('r_group_temp.jpg')
 
     smiles = [actions.clean_output(smile) for smile in smiles]
 
@@ -305,7 +306,7 @@ def separate_duplicate_r_groups(r_groups):
 
     # If irregular, default behaviour is to just use one of the values
     if not equal_length:
-        return r_groups
+        return [r_groups]
 
     # Populate dictionary for each unque variable
     for var in unique_vars:
@@ -316,7 +317,11 @@ def separate_duplicate_r_groups(r_groups):
     for i in range(len(vars_dict[var.text])):
         temp = []
         for var in unique_vars:
-            temp.append(vars_dict[var.text][i])
+            try:
+                temp.append(vars_dict[var.text][i])
+            except Exception as e:
+                print("An error occured while attempting to separate duplicate r-groups")
+                print(e)
         output.append(temp)
 
     return output

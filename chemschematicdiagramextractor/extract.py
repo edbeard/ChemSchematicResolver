@@ -93,7 +93,6 @@ def subsitute_labels(records, results):
             print('Diag smile: %s \n' % diag_smile)
 
 
-
 def download_figs(figs, output):
     """ Downloads figures from url
 
@@ -174,11 +173,18 @@ def extract_diagram(filename, debug=False):
     # Segment image into pixel islands
     panels = segment(bin_fig)
 
-    # Classify panels into labels and diagrams by size
-    labels, diags = classify_kmeans(panels)
+    # Classify and preprocess images, to account for merging in segmentation
+    labels, diags = classify_kmeans(panels, fig)
 
-    # Proprocess image (eg merge labels that are small into larger labels)
+    # Preprocess image (eg merge labels that are small into larger labels)
     labels, diags = preprocessing(labels, diags, fig)
+
+    # Re-cluster by height if there are more Diagram objects than Labels
+    if len(labels) < len(diags):
+        labels, diags = classify_kmeans(panels, fig, skel=False)
+        labels, diags = preprocessing(labels, diags, fig)
+
+        #TODO: Add some logic here to choose the clustering that has the closet number of diagrams and labels?
 
     if debug is True:
         # Create output image
