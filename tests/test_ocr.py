@@ -9,7 +9,7 @@ Test optical character recognition
 
 import unittest
 import os
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 from skimage.transform import rescale
 import copy
 
@@ -36,8 +36,8 @@ class TestOcr(unittest.TestCase):
         test_imgs = [os.path.join(examples_dir, file) for file in os.listdir(examples_dir)]
 
         for img_path in test_imgs:
-            fig = csde.io.imread(img_path)  # Read in float and raw pixel images
-            text_blocks = csde.ocr.get_text(fig.img)
+            fig = csr.io.imread(img_path)  # Read in float and raw pixel images
+            text_blocks = csr.ocr.get_text(fig.img)
 
             # Create output image
             out_fig, ax = plt.subplots(figsize=(10, 6))
@@ -57,16 +57,16 @@ class TestOcr(unittest.TestCase):
 
         path = os.path.join(ocr_examples_dir, 'S0143720816301115_gr1_text.jpg')
 
-        fig = csde.io.imread(path)
+        fig = csr.io.imread(path)
         copy_fig = copy.deepcopy(fig)
 
         bin_fig = copy_fig
 
         # Trying binarization
-        #bin_fig = csde.actions.binarize(copy_fig, threshold=0.7)
+        #bin_fig = csr.actions.binarize(copy_fig, threshold=0.7)
         # Create output image
 
-        text_blocks = csde.ocr.get_text(bin_fig.img)
+        text_blocks = csr.ocr.get_text(bin_fig.img)
 
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(bin_fig.img)

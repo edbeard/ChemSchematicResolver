@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor.model as mod
+import chemschematicresolver.model as mod
 import unittest
 
 class TestModel(unittest.TestCase):

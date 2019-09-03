@@ -9,7 +9,7 @@ Test parsing operations.
 
 from chemdataextractor.parse.cem import BaseParser, lenient_chemical_label
 from chemdataextractor.doc.text import Sentence
-from chemschematicdiagramextractor.parse import LabelParser
+from chemschematicresolver.parse import LabelParser
 
 import unittest
 

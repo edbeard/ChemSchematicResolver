@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor.validate as val
+import chemschematicresolver.validate as val
 import unittest
 
 

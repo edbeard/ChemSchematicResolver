@@ -3,7 +3,7 @@
 Decorators
 ==========
 
-Python decorators used throughout ChemSchematicDiagramExtractor.
+Python decorators used throughout ChemSchematicResolver.
 
 """
 

@@ -9,7 +9,7 @@ Test extraction of Chemical Schematic Images
 
 import unittest
 import os
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 from skimage.transform import rescale
 import copy
 
@@ -27,7 +27,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(train_markush_small_dir, filename)
-        result = csde.extract.extract_diagram(path, debug=True)
+        result = csr.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
         return result
@@ -39,7 +39,7 @@ class TestExtract(unittest.TestCase):
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             full_path = os.path.join(test_path, img_path)
-            csde.extract.extract_diagram(full_path, debug=True)
+            csr.extract.extract_diagram(full_path, debug=True)
 
     def test_run_train_imgs(self):
         """ Run all images in train_imgs directory"""
@@ -86,7 +86,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(r_group_diag_dir, filename)
-        result = csde.extract.extract_diagram(path, debug=True)
+        result = csr.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
     def test_r_group_diag_1(self):
@@ -141,7 +141,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the train_imgs directory"""
 
         path = os.path.join(train_imgs_dir, filename)
-        result = csde.extract.extract_diagram(path, debug=False)
+        result = csr.extract.extract_diagram(path, debug=False)
         self.assertEqual(gold, result)
 
     def test_train_imgs_1(self):
@@ -152,7 +152,7 @@ class TestExtract(unittest.TestCase):
 
     def test_extract_document(self):
         path = os.path.join(train_dir, 'train_docs', '10.1039_C4TC01753F.html')
-        records = csde.extract.extract_document(path)
+        records = csr.extract.extract_document(path)
         import pprint
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(records)
@@ -1215,5 +1215,5 @@ class TestExtract(unittest.TestCase):
                         (['10'], '')],
                         [(['znuum'], '')]]
 
-        csde.extract.subsitute_labels(records, results)
+        csr.extract.subsitute_labels(records, results)
 

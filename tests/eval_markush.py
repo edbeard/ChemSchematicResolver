@@ -10,11 +10,11 @@ Used to test accuracy of training samples in semi-automatic way
 import unittest
 import os
 import copy
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
-from chemschematicdiagramextractor.ocr import LABEL_WHITELIST
+from chemschematicresolver.ocr import LABEL_WHITELIST
 
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,21 +31,21 @@ class TestMarkush(unittest.TestCase):
 
         train_img = os.path.join(raw_train_data, filename)
         # Read in float and raw pixel images
-        fig = csde.io.imread(train_img)
-        raw_fig = csde.io.imread(train_img, raw=True)
+        fig = csr.io.imread(train_img)
+        raw_fig = csr.io.imread(train_img, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
-        panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        panels = csr.actions.segment(bin_fig)
+        panels = csr.actions.preprocessing(panels, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        diags, labels = csr.actions.classify_kruskal(panels)
+        labelled_diags = csr.actions.label_kruskal(diags, labels)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
@@ -75,7 +75,7 @@ class TestMarkush(unittest.TestCase):
 
         fig, labelled_diags = self.find_labels_from_img('S0143720816300286_gr1.jpg')
         test_diag = labelled_diags[1]
-        print(csde.actions.read_label(fig, test_diag.label))
+        print(csr.actions.read_label(fig, test_diag.label))
 
         print(labelled_diags)
 
@@ -83,8 +83,8 @@ class TestMarkush(unittest.TestCase):
 
         train_img = os.path.join(raw_train_data, 'S0143720816301681_gr1.jpg')
         # Read in float and raw pixel images
-        fig = csde.io.imread(train_img)
-        txt = csde.ocr.get_text(fig.img, whitelist=LABEL_WHITELIST)
+        fig = csr.io.imread(train_img)
+        txt = csr.ocr.get_text(fig.img, whitelist=LABEL_WHITELIST)
         print(txt)
 
 

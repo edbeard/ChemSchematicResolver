@@ -11,12 +11,12 @@ else:
     long_description = '''A toolkit for resolving chemical SMILES from structural diagrams.'''
 
 setup(
-    name='ChemSchematicDiagramExtractor',
+    name='ChemSchematicResolver',
     version='0.0.1',
     author='Edward Beard',
     author_email='ejb207@cam.ac.uk',
     license='MIT',
-    url='https://github.com/edbeard/csde',
+    url='https://github.com/edbeard/csr',
     packages=find_packages(),
     description='A toolkit for resolving chemical SMILES from structural diagrams.',
     long_description=long_description,

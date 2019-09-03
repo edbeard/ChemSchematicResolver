@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 import os
 from pathlib import Path
 import unittest
@@ -30,10 +30,10 @@ class TestImportAndSave(unittest.TestCase):
     def test_import_png(self):
         """ Tests import of jpg file"""
 
-        fig = csde.io.imread(sample_diag)
+        fig = csr.io.imread(sample_diag)
 
         output_path = os.path.join(train_dir, 'test_import_and_save.jpg')
-        csde.io.imsave(output_path,fig.img)
+        csr.io.imsave(output_path,fig.img)
         f = Path(output_path)
         isFile = f.is_file()
         os.remove(output_path)

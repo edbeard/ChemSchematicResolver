@@ -1,7 +1,7 @@
 
 # -*- coding: utf-8 -*-
 """
-ChemSchematicDiagramExtractor
+ChemSchematicResolver
 ===================
 Automatically extract data from schematic chemical diagrams
 """
@@ -13,7 +13,7 @@ from __future__ import unicode_literals
 import logging
 
 
-__title__ = 'ChemSchematicDiagramExtractor'
+__title__ = 'ChemSchematicResolver'
 __version__ = '0.0.1'
 __author__ = 'Ed Beard'
 __email__ = 'ed.beard94@gmail.com'

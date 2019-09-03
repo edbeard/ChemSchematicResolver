@@ -49,7 +49,7 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
     print("All relevant figures from %s downloaded sucessfully" % filename)
 
     if do_extract:
-        # Run CSDE
+        # Run CSR
         results = []
         for path in fig_paths:
             try:

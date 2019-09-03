@@ -7,8 +7,8 @@ Test R-group resolution operations.
 
 """
 
-from chemschematicdiagramextractor import r_group
-from chemschematicdiagramextractor.model import RGroup
+from chemschematicresolver import r_group
+from chemschematicresolver.model import RGroup
 from chemdataextractor.doc.text import Token, Lexicon
 #from molvs import standardize_smiles
 import unittest

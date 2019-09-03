@@ -15,7 +15,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 import os
 import unittest
 import copy
@@ -45,14 +45,14 @@ class TestSystem(unittest.TestCase):
 
         test_diag = os.path.join(filedir, filename)
 
-        fig = csde.io.imread(test_diag) # Read in float and raw pixel images
+        fig = csr.io.imread(test_diag) # Read in float and raw pixel images
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
 
-        panels = csde.actions.segment(raw_fig)
+        panels = csr.actions.segment(raw_fig)
         print('Segmented panel number : %s ' % len(panels))
 
-        labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
         all_panels = labels + diags
         print('After processing : %s' % len(all_panels))
 
@@ -98,14 +98,14 @@ class TestSystem(unittest.TestCase):
 
         test_diag = os.path.join(filedir, filename)
 
-        fig = csde.io.imread(test_diag) # Read in float and raw pixel images
+        fig = csr.io.imread(test_diag) # Read in float and raw pixel images
         raw_fig = copy.deepcopy(fig)  # Create unreferenced binary copy
 
-        panels = csde.actions.segment(raw_fig, size=3)
+        panels = csr.actions.segment(raw_fig, size=3)
         print('Segmented panel number : %s ' % len(panels))
 
-        labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
         all_panels = labels + diags
         print('After processing : %s' % len(all_panels))
 
@@ -205,7 +205,7 @@ class TestSystem(unittest.TestCase):
         self.do_segmentation('S0143720816301401_gr5.jpg', r_group_diags_dir)
 
     def test_segmentation_13(self):
-        self.do_segmentation('10.1039_C4TC01753F_fig1.gif', filedir='/home/edward/github/csde-development/csd')
+        self.do_segmentation('10.1039_C4TC01753F_fig1.gif', filedir='/home/edward/github/csr-development/csd')
 
     # Testing grouping of diagram - label pairs is correct
     def do_grouping(self, filename, filedir=examples_dir):
@@ -220,25 +220,25 @@ class TestSystem(unittest.TestCase):
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_diag)
+        fig = csr.io.imread(test_diag)
         fig_bbox = fig.get_bounding_box()
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Segment and classify diagrams
-        panels = csde.actions.segment(bin_fig)
-        labels, diags = csde.actions.classify_kmeans(panels)
+        panels = csr.actions.segment(bin_fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
 
         # Preprocessing cleaning and merging
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
         # Assign labels to diagrams
-        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
+        labelled_diags = csr.actions.label_diags(labels, diags, fig_bbox)
 
         colours = iter(['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
 
@@ -306,23 +306,23 @@ class TestSystem(unittest.TestCase):
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_diag)
+        fig = csr.io.imread(test_diag)
         fig_bbox = fig.get_bounding_box()
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Segment and classify diagrams and labels
-        panels = csde.actions.segment(bin_fig)
-        labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        panels = csr.actions.segment(bin_fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
         # Assign labels to diagrams
-        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
+        labelled_diags = csr.actions.label_diags(labels, diags, fig_bbox)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y'])
@@ -343,8 +343,8 @@ class TestSystem(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            label = csde.actions.read_label(fig, label)
-            label_strings = [csde.actions.clean_output(sentence.text) for sentence in label.text]
+            label = csr.actions.read_label(fig, label)
+            label_strings = [csr.actions.clean_output(sentence.text) for sentence in label.text]
             labels_text.append(label_strings)
             print("Label %s : %s " % (label.tag, labels_text))
 
@@ -436,16 +436,16 @@ class TestSystem(unittest.TestCase):
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_diag)
+        fig = csr.io.imread(test_diag)
         fig_bbox = fig.get_bounding_box()
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Segment and classify diagrams and labels
-        panels = csde.actions.segment(bin_fig)
-        labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        panels = csr.actions.segment(bin_fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         if debug is True:
@@ -455,13 +455,13 @@ class TestSystem(unittest.TestCase):
                 ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
                  'y'])
 
-        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
+        labelled_diags = csr.actions.label_diags(labels, diags, fig_bbox)
 
         for diag in labelled_diags:
 
             label = diag.label
-            diag.label = csde.actions.read_label(fig, label)
-            diag = csde.r_group.detect_r_group(diag)
+            diag.label = csr.actions.read_label(fig, label)
+            diag = csr.r_group.detect_r_group(diag)
 
             if debug is True:
 
@@ -591,16 +591,16 @@ class TestSystem(unittest.TestCase):
         test_diag = os.path.join(filedir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_diag)
+        fig = csr.io.imread(test_diag)
         fig_bbox = fig.get_bounding_box()
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Segment and classify diagrams and labels
-        panels = csde.actions.segment(bin_fig)
-        labels, diags = csde.actions.classify_kmeans(panels)
-        labels, diags = csde.actions.preprocessing(labels, diags, fig)
+        panels = csr.actions.segment(bin_fig)
+        labels, diags = csr.actions.classify_kmeans(panels)
+        labels, diags = csr.actions.preprocessing(labels, diags, fig)
 
         # Create output image
         if debug is True:
@@ -610,14 +610,14 @@ class TestSystem(unittest.TestCase):
                 ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
                  'y'])
 
-        labelled_diags = csde.actions.label_diags(labels, diags, fig_bbox)
+        labelled_diags = csr.actions.label_diags(labels, diags, fig_bbox)
 
         for diag in labelled_diags:
 
             label = diag.label
-            diag.label = csde.actions.read_label(fig, label)
-            diag = csde.r_group.detect_r_group(diag)
-            csde.extract.get_smiles(diag, smiles, r_smiles)
+            diag.label = csr.actions.read_label(fig, label)
+            diag = csr.r_group.detect_r_group(diag)
+            csr.extract.get_smiles(diag, smiles, r_smiles)
 
             if debug is True:
                 colour = next(colours)
@@ -802,21 +802,21 @@ class TestSystem(unittest.TestCase):
         test_diag = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_diag)
-        raw_fig = csde.io.imread(test_diag, raw=True)
+        fig = csr.io.imread(test_diag)
+        raw_fig = csr.io.imread(test_diag, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
-        panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, bin_fig)
+        panels = csr.actions.segment(bin_fig)
+        panels = csr.actions.preprocessing(panels, bin_fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        diags, labels = csr.actions.classify_kruskal(panels)
+        labelled_diags = csr.actions.label_kruskal(diags, labels)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
@@ -838,7 +838,7 @@ class TestSystem(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            smile, confidence = csde.actions.read_diagram(fig, diag)
+            smile, confidence = csr.actions.read_diagram(fig, diag)
             if '*' not in smile:
                 print(smile, confidence)
             smiles.append(smile)
@@ -899,21 +899,21 @@ class TestValidation(unittest.TestCase):
         test_fig = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_fig)
-        raw_fig = csde.io.imread(test_fig, raw=True)
+        fig = csr.io.imread(test_fig)
+        raw_fig = csr.io.imread(test_fig, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
-        panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        panels = csr.actions.segment(bin_fig)
+        panels = csr.actions.preprocessing(panels, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        diags, labels = csr.actions.classify_kruskal(panels)
+        labelled_diags = csr.actions.label_kruskal(diags, labels)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
@@ -921,9 +921,9 @@ class TestValidation(unittest.TestCase):
 
         smiles = []
 
-        avg_pixel_ratio = csde.validate.total_pixel_ratio(bin_fig, labelled_diags)
-        diags_to_image_ratio = csde.validate.diagram_to_image_area_ratio(bin_fig, labelled_diags)
-        avg_diag_area_to_total_img_ratio = csde.validate.avg_diagram_area_to_image_area(bin_fig, labelled_diags)
+        avg_pixel_ratio = csr.validate.total_pixel_ratio(bin_fig, labelled_diags)
+        diags_to_image_ratio = csr.validate.diagram_to_image_area_ratio(bin_fig, labelled_diags)
+        avg_diag_area_to_total_img_ratio = csr.validate.avg_diagram_area_to_image_area(bin_fig, labelled_diags)
 
         for diag in labelled_diags:
             colour = next(colours)
@@ -939,10 +939,10 @@ class TestValidation(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            smile, confidence = csde.actions.read_diagram(fig, diag)
+            smile, confidence = csr.actions.read_diagram(fig, diag)
             smiles.append(smile)
             print("Label {} ({}): {} ".format(diag.tag, confidence, smile))
-            print("Black pixel ratio : %s " % csde.validate.pixel_ratio(bin_fig, diag))
+            print("Black pixel ratio : %s " % csr.validate.pixel_ratio(bin_fig, diag))
 
         print('Overall diagram metrics:')
         print('Average 1 / all ratio: %s' % avg_pixel_ratio)
@@ -989,23 +989,23 @@ class TestFiltering(unittest.TestCase):
         test_fig = os.path.join(examples_dir, filename)
 
         # Read in float and raw pixel images
-        fig = csde.io.imread(test_fig)
-        raw_fig = csde.io.imread(test_fig, raw=True)
+        fig = csr.io.imread(test_fig)
+        raw_fig = csr.io.imread(test_fig, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Preprocessing steps
-        panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        panels = csr.actions.segment(bin_fig)
+        panels = csr.actions.preprocessing(panels, fig)
 
         # Create output image
         out_fig, ax = plt.subplots(figsize=(10, 6))
         ax.imshow(fig.img)
 
         # Get label pairs
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        diags, labels = csr.actions.classify_kruskal(panels)
+        labelled_diags = csr.actions.label_kruskal(diags, labels)
 
         colours = iter(
             ['r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm', 'y', 'r', 'b', 'g', 'k', 'c', 'm',
@@ -1027,12 +1027,12 @@ class TestFiltering(unittest.TestCase):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-            smile, confidence = csde.actions.read_diagram(fig, diag)
+            smile, confidence = csr.actions.read_diagram(fig, diag)
             diag.smile = smile
             diags_with_smiles.append(diag)
 
         # Run post-processing: 
-        formatted_smiles = csde.validate.format_all_smiles(diags_with_smiles)
+        formatted_smiles = csr.validate.format_all_smiles(diags_with_smiles)
         print(formatted_smiles)
         return formatted_smiles
 

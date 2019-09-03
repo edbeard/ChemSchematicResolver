@@ -23,7 +23,7 @@ class LabelParser(BaseParser):
             yield Compound(labels=[label])
 
 
-class ChemSchematicDiagramExtractorTokeniser(WordTokenizer):
+class ChemSchematicResolverTokeniser(WordTokenizer):
     """ Altered version of ChemDiagramExtractors word tokenizer that doesn't split on prime characters"""
 
     #: Split before and after these sequences, wherever they occur, unless entire token is one of these sequences

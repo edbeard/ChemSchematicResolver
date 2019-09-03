@@ -16,7 +16,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-import chemschematicdiagramextractor as csde
+import chemschematicresolver as csr
 import os
 import unittest
 import copy
@@ -39,27 +39,27 @@ def split_raw_train_data():
 
         train_path = os.path.join(raw_train_data, train_fig)
         #  Read in float and raw pixel images
-        fig = csde.io.imread(train_path)
-        raw_fig = csde.io.imread(train_path, raw=True)
+        fig = csr.io.imread(train_path)
+        raw_fig = csr.io.imread(train_path, raw=True)
 
         # Create unreferenced binary copy
         bin_fig = copy.deepcopy(fig)
 
         # Segment images
-        panels = csde.actions.segment(bin_fig)
-        panels = csde.actions.preprocessing(panels, fig)
+        panels = csr.actions.segment(bin_fig)
+        panels = csr.actions.preprocessing(panels, fig)
 
         # Classify diagrams and their labels using kruskal
-        diags, labels = csde.actions.classify_kruskal(panels)
-        labelled_diags = csde.actions.label_kruskal(diags, labels)
+        diags, labels = csr.actions.classify_kruskal(panels)
+        labelled_diags = csr.actions.label_kruskal(diags, labels)
 
         # Save the segmented diagrams
         for diag in labelled_diags:
             # Save the segmented diagrams
             l, r, t, b = diag.left, diag.right, diag.top, diag.bottom
-            cropped_img = csde.actions.crop(raw_fig.img, l, r, t, b)
+            cropped_img = csr.actions.crop(raw_fig.img, l, r, t, b)
             out_path = os.path.join(seg_train_dir, train_fig[:-4] + '_' + str(diag.tag))
-            csde.io.imsave(out_path + '.png', cropped_img)
+            csr.io.imsave(out_path + '.png', cropped_img)
 
             # TODO :  Create image with regions and labels superimposed
             
@@ -96,12 +96,12 @@ def split_raw_train_data():
 #             img_path = os.path.join(seg_train_dir, train_fig)
 #
 #             # Load in cropped diagram
-#             fig = csde.io.imread(img_path)
-#             l, r, t, b = csde.actions.get_img_boundaries(fig.img)
-#             diag = csde.model.Diagram(l, r, t, b, 0) # Using throwaway tag 0
+#             fig = csr.io.imread(img_path)
+#             l, r, t, b = csr.actions.get_img_boundaries(fig.img)
+#             diag = csr.model.Diagram(l, r, t, b, 0) # Using throwaway tag 0
 #
 #             # Get the SMILES and the confidence
-#             smile, confidence = csde.actions.read_diagram(fig, diag)
+#             smile, confidence = csr.actions.read_diagram(fig, diag)
 #
 #             if '*' in smile:
 #                 pass # Remove wildcard results
@@ -153,12 +153,12 @@ def eval_train_data():
         img_path = os.path.join(seg_train_dir, train_fig)
 
         # Load in cropped diagram
-        fig = csde.io.imread(img_path)
-        l, r, t, b = csde.actions.get_img_boundaries(fig.img)
-        diag = csde.model.Diagram(l, r, t, b, 0) # Using throwaway tag 0
+        fig = csr.io.imread(img_path)
+        l, r, t, b = csr.actions.get_img_boundaries(fig.img)
+        diag = csr.model.Diagram(l, r, t, b, 0) # Using throwaway tag 0
 
         # Get the SMILES and the confidence
-        smile, confidence = csde.actions.read_diagram(fig, diag)
+        smile, confidence = csr.actions.read_diagram(fig, diag)
 
         if '*' in smile:
             pass # Remove wildcard results
