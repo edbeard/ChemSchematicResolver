@@ -40,7 +40,8 @@ ALPHANUMERIC_REGEX = re.compile('^((d-)?(\d{1,2}[A-Za-z]{1,2}[′″‴‶‷⁗
 def detect_r_group(diag):
     """ Determines whether a label represents an R-Group structure, and if so gives the variable and value
 
-    # TODO : docstring
+    :param diag: Diagram object to search for R-Group indicators
+    :return diag: Diagram object with R-Group variable and value candidates assigned.
     """
 
     sentences = diag.label.text
@@ -49,11 +50,11 @@ def detect_r_group(diag):
 
         for i, token in enumerate(sentence.tokens):
             if token.text is '=':
-                print('Found R-Group descriptor %s' % token.text)
+                log.info('Found R-Group descriptor %s' % token.text)
                 if i > 0:
-                    print('Variable candidate is %s' % sentence.tokens[i-1] )
+                    log.info('Variable candidate is %s' % sentence.tokens[i-1] )
                 if i < len(sentence.tokens) - 1:
-                    print('Value candidate is %s' % sentence.tokens[i+1])
+                    log.info('Value candidate is %s' % sentence.tokens[i+1])
 
                 if 0 < i < len(sentence.tokens) - 1:
                     variable = sentence.tokens[i - 1]
@@ -61,7 +62,7 @@ def detect_r_group(diag):
                     var_value_pairs.append(RGroup(variable, value, []))
 
             elif token.text == 'or' and var_value_pairs:
-                print('"or" keyword detected. Assigning value to previous R-group variable...')
+                log.info('"or" keyword detected. Assigning value to previous R-group variable...')
 
                 # Identify the most recent var_value pair
                 variable = var_value_pairs[-1].var
@@ -69,9 +70,8 @@ def detect_r_group(diag):
                 var_value_pairs.append(RGroup(variable, value, []))
 
         # Process R-group values from '='
-        r_groups = get_label_candiates(sentence, var_value_pairs)
+        r_groups = get_label_candidates(sentence, var_value_pairs)
         r_groups = standardize_values(r_groups)
-          # TODO : Add logic here to detect all other alphanumerics using re package
 
         # Resolving positional labels where possible for 'or' cases
         r_groups = filter_repeated_labels(r_groups)
@@ -80,16 +80,21 @@ def detect_r_group(diag):
         r_groups_list = separate_duplicate_r_groups(r_groups)
 
         for r_groups in r_groups_list:
-
             diag.label.add_r_group_variables(convert_r_groups_to_tuples(r_groups))
-
-        # Process R-group values from 'or' if present
 
     return diag
 
 
-def get_label_candiates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
-    """Extracts label candidates from a sentence that contains r-groups"""
+def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
+    """Assign label candidates from a sentence that contains known R-Group variables
+
+    :param sentence: Sentence to probe for label candidates
+    :param: r_groups: A list of R-Group objects with variable-value pairs assigned
+    :param blacklist_chars: String of disallowed characters
+    :param blacklist_words: List of disallowed words
+
+    :return r_groups: List of R-Group objects with assigned label candidates
+    """
 
     # TODO : Combine this logic into one line?
     # Remove irrelevant characters and blacklisted words
@@ -114,11 +119,10 @@ def get_label_candiates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bla
 
 def filter_repeated_labels(r_groups):
     """
-     Checks if the same variable is present twice.
-    If yes, this is an 'or' case so relative label assignment ensues
+     Detects repeated variable values.
+     When found, this is determined to be an 'or' case so relative label assignment ensues
      """
 
-    # Identify 'or' variables
     or_vars = []
     vars = [r_group.var for r_group in r_groups]
     unique_vars = set(vars)
@@ -165,56 +169,29 @@ def filter_repeated_labels(r_groups):
     return output_r_groups
 
 
-
-    # vars_and_values = []
-    # for r_group in var_value_pairs:
-    #     vars_and_values.append(r_group.var)
-    #     vars_and_values.append(r_group.value)
-    #
-    # print(candidates)
-    #
-    # output = []
-    #
-    # for r_group in var_value_pairs:
-    #     label_cands = []
-    #     for token in candidates:
-    #         if token not in vars_and_values:
-    #             label_cands.append(token)
-    #
-    #     output.append((r_group.var, r_group.value, label_cands))
-    #
-    # return output
-
-
-def get_rgroup_smiles(diag, cleanchars='()'):
-    """ Uses modified version of OSRA to get SMILES for multiple """
+def get_rgroup_smiles(diag, extension='jpg', debug=True):
+    """ Uses pyosra to extract the SMILES from a chemical diagram"""
 
     # Add some padding to image to help resolve characters on the edge
     padded_img = pad(diag.fig.img, ((5,5), (5,5), (0, 0)), mode='constant', constant_values=1)
 
-    #TODO : Save the image to the correct format here!!
     # Save a temp image
-    io.imsave('r_group_temp.jpg', padded_img)
+    io.imsave('r_group_temp.' + extension, padded_img)
 
     osra_input = []
     label_cands = []
-    smiles = []
 
-    #Format the extracted rgroup
+    # Format the extracted rgroup
     for tokens in diag.label.r_group:
         token_dict = {}
         for token in tokens:
 
-
-            #value = clean_chars(token[1].text, cleanchars)
             token_dict[token[0].text] = token[1].text
-            #smiles.append(resolve_structure(token[1].text))
 
         # Assigning var-var cases to true value if found (eg. R1=R2=H)
         for a, b in itertools.combinations(token_dict.keys(), 2):
             if token_dict[a] == b:
                 token_dict[a] = token_dict[b]
-
 
         osra_input.append(token_dict)
         label_cands.append(tokens[0][2])
@@ -224,7 +201,8 @@ def get_rgroup_smiles(diag, cleanchars='()'):
     # Run osra on temp image
     smiles = osra_rgroup.read_rgroup(osra_input, input_file="r_group_temp.jpg", verbose=True, debug=True)
 
-    # io.imdel('r_group_temp.jpg')
+    if not debug:
+        io.imdel('r_group_temp.jpg')
 
     smiles = [actions.clean_output(smile) for smile in smiles]
 

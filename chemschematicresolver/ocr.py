@@ -22,6 +22,8 @@ import numpy as np
 import tesserocr
 
 from . import decorators, io, model
+from .utils import convert_greyscale, crop, pad
+from .parse import ChemSchematicResolverTokeniser, LabelParser
 
 
 log = logging.getLogger(__name__)
@@ -35,6 +37,41 @@ CONCENTRATION = '%()<>'
 SEPERATORS = ','
 OTHER = '\'`'
 LABEL_WHITELIST = ASSIGNMENT + DIGITS + ALPHABET_UPPER + ALPHABET_LOWER + CONCENTRATION + SEPERATORS + OTHER
+
+
+def read_diag_text(fig, diag, whitelist=LABEL_WHITELIST):
+    """ Reads a diagram using OCR and returns the textual OCR objects"""
+    img = convert_greyscale(fig.img)
+    cropped_img = crop(img, diag.left, diag.right, diag.top, diag.bottom)
+    text = get_text(cropped_img, x_offset=diag.left, y_offset=diag.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
+    tokens = get_words(text)
+    return tokens
+
+
+def read_label(fig, label, whitelist=LABEL_WHITELIST):
+    """ Reads a label paragraph objects using ocr
+
+    :param numpy.ndarray img: Input unprocessedimage
+    :param Label label: Label object containing appropriate bounding box
+
+    :rtype List[List[str]]
+    """
+
+    size = 5
+    img = convert_greyscale(fig.img)
+    cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
+    padded_img = pad(cropped_img, size, mode='constant', constant_values=(1, 1))
+    text = get_text(padded_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
+    raw_sentences = get_sentences(text)
+
+    if len(raw_sentences) is not 0:
+        # Tag each sentence
+        tagged_sentences = [model.Sentence(sentence, word_tokenizer=ChemSchematicResolverTokeniser(),
+                                           parsers=[LabelParser()]) for sentence in raw_sentences]
+    else:
+        tagged_sentences = []
+    label.text = tagged_sentences
+    return label
 
 
 # These enums just wrap tesserocr functionality, so we can return proper enum members instead of ints.

@@ -45,15 +45,11 @@ def imread(f, raw=False):
 
     # Transform all images pixel values to be floating point values between 0 and 1 (i.e. not ints 0-255)
     # Recommended in skimage-tutorials "Images are numpy arrays" because this what scikit-image uses internally
-    if raw == False:
+    if not raw:
         img = img_as_float(img)
     fig = Figure(img)
 
-
-
     return fig
-
-#def imread_img(f):
 
 
 def imsave(f, img):
@@ -63,6 +59,7 @@ def imsave(f, img):
     """
     # Ensure we use PIL so we can guarantee that imsave will accept file-like object as well as filename
     skio.imsave(f, img, plugin='pil', quality=100)
+
 
 def imdel(f):
     """ Delete an image file

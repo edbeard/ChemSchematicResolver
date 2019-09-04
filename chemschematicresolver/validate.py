@@ -13,7 +13,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .actions import pixel_ratio, crop
+from .actions import pixel_ratio
+from .utils import crop
 import logging
 
 import re

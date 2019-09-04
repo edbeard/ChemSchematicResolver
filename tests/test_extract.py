@@ -1215,5 +1215,5 @@ class TestExtract(unittest.TestCase):
                         (['10'], '')],
                         [(['znuum'], '')]]
 
-        csr.extract.subsitute_labels(records, results)
+        csr.extract.substitute_labels(records, results)
 

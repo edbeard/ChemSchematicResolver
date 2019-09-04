@@ -7,9 +7,16 @@ Functions for extracting Diagrams
 Toolkit for extracting diagram-label pairs from schematic chemical diagrams.
 
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+import logging
 
 from .io import imread
-from .actions import segment, classify_kmeans, preprocessing, label_diags, read_label, read_diagram_pyosra, clean_output
+from .actions import segment, classify_kmeans, preprocessing, label_diags, read_diagram_pyosra
+from .clean import clean_output
+from .ocr import read_label
 from .r_group import detect_r_group, get_rgroup_smiles
 from .validate import is_false_positive
 
@@ -19,10 +26,11 @@ import matplotlib.patches as mpatches
 import os
 import urllib
 import cirpy
-#from molvs import standardize_smiles
 
 from chemdataextractor import Document
 from chemdataextractor.text.normalize import chem_normalize
+
+log = logging.getLogger(__name__)
 
 
 def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
@@ -38,15 +46,14 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
 
     # Extract the raw records from CDE
     doc = Document.from_file(filename)
-
     figs = doc.figures
 
     # Identify image candidates
     csds = find_image_candidates(figs, filename)
 
-    # Donwload figures locally
+    # Download figures locally
     fig_paths = download_figs(csds, output)
-    print("All relevant figures from %s downloaded sucessfully" % filename)
+    log.info("All relevant figures from %s downloaded sucessfully" % filename)
 
     if do_extract:
         # Run CSR
@@ -54,17 +61,17 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
         for path in fig_paths:
             try:
                 results.append(extract_diagram(path))
-            except:
+            except Exception:
                 pass
-        # Subsitute smiles for labels
 
-        subsitute_labels(doc.records.serialize(), results)
+        # Substitute smiles for labels
+        substitute_labels(doc.records.serialize(), results)
 
         return results
 
 
-def subsitute_labels(records, results):
-    """ Looks for label candidates in the document records and subsitutes where appropriate"""
+def substitute_labels(records, results):
+    """ Looks for label candidates in the document records and substitutes where appropriate"""
 
     # TODO : make it so this substitutes in the CDE records with new field smiles: ['diagram': ''] or something...
 
@@ -79,18 +86,16 @@ def subsitute_labels(records, results):
                 overlap = [(record_label, label_cand, smile)  for label_cand in label_cands if label_cand in record_label['labels']]
                 doc_named_records += overlap
 
-    print(doc_named_records)
-    #
+    log.debug(doc_named_records)
+
     for doc_record, diag_label, diag_smile in doc_named_records:
         for name in (doc_record['names']):
             try:
                 doc_smile = cirpy.resolve(chem_normalize(name).encode('utf-8'), 'smiles')
-                # doc_smile = standardize_smiles(doc_smile)
-                # diag_smile = standardize_smiles(diag_smile, 'smiles')
             except:
                 pass
-            print('Doc smile: %s ' % doc_smile)
-            print('Diag smile: %s \n' % diag_smile)
+            log.debug('Doc smile: %s ' % doc_smile)
+            log.debug('Diag smile: %s \n' % diag_smile)
 
 
 def download_figs(figs, output):
@@ -108,15 +113,15 @@ def download_figs(figs, output):
     for file, id, url, caption in figs:
 
         img_format = url.split('.')[-1]
-        print('Downloading %s image from %s' % (img_format, url))
+        log.info('Downloading %s image from %s' % (img_format, url))
         filename = file.split('/')[-1].rsplit('.', 1)[0] + '_' + id + '.' + img_format
         path = os.path.join(output, filename)
 
-        print("Downloading %s..." % filename)
+        log.debug("Downloading %s..." % filename)
         if not os.path.exists(path):
             urllib.request.urlretrieve(url, path) # Saves downloaded image to file
         else:
-            print("File exists! Going to next image")
+            log.debug("File exists! Going to next image")
 
         fig_paths.append(path)
 
@@ -127,6 +132,7 @@ def find_image_candidates(figs, filename):
     """ Returns a list of csd figures
 
     :param figs: ChemDataExtractor figure objects
+    :param filename: String of the file's name
     :return: List of figure metadata (Filename, figure id, url to figure, caption)
     :rtype:   list[tuple[string, string, string, string]]
     """
@@ -143,7 +149,7 @@ def find_image_candidates(figs, filename):
             rec = record.serialize()
             if ['csd'] in rec.values():
                 detected = True
-                print('Chemical schematic diagram instance found!')
+                log.info('Chemical schematic diagram instance found!')
                 csd_imgs.append((filename, fig.id, fig.url, caption.text.replace('\n', ' ')))
 
     return csd_imgs
@@ -159,6 +165,8 @@ def extract_diagram(filename, debug=False):
     # Output lists
     r_smiles = []
     smiles = []
+
+    extension = filename.split('.')[-1]
 
     # Read in float and raw pixel images
     fig = imread(filename)
@@ -221,14 +229,14 @@ def extract_diagram(filename, debug=False):
         diag.label = read_label(fig, label)
 
         # Add r-group variables if detected
-        diag = detect_r_group(diag)
+        diag = detect_r_group(diag, extension)
 
         # Get SMILES for output
         smiles, r_smiles = get_smiles(diag, smiles, r_smiles)
 
-    print("The results are :")
-    print('R-smiles %s' % r_smiles)
-    print('Smiles %s' % smiles)
+    log.info("The results are :")
+    log.info('R-smiles %s' % r_smiles)
+    log.info('Smiles %s' % smiles)
     if debug is True:
         ax.set_axis_off()
         plt.show()
@@ -237,26 +245,26 @@ def extract_diagram(filename, debug=False):
 
     # Removing false positives from lack of labels or wildcard smiles
     output = [smile for smile in total_smiles if is_false_positive(smile) is False]
-    print('Final Results : ')
+    log.info('Final Results : ')
     for result in output:
-        print(result)
+        log.info(result)
 
     return output
 
 
-def get_smiles(diag, smiles, r_smiles):
+def get_smiles(diag, smiles, r_smiles, extension='jpg'):
     """ Identifies diagrams containing R-group"""
 
     # Resolve R-groups if detected
     if len(diag.label.r_group) > 0:
-        r_smiles_group = get_rgroup_smiles(diag)
+        r_smiles_group = get_rgroup_smiles(diag, extension)
         for smile in r_smiles_group:
             label_cand_str = [cand.text for cand in smile[0]]
             r_smiles.append((label_cand_str, smile[1]))
 
     # Resolve diagram normally if no R-groups - should just be one smile
     else:
-        smile = read_diagram_pyosra(diag)
+        smile = read_diagram_pyosra(diag, extension)
         label_raw = diag.label.text
         label_cand_str = [clean_output(cand.text) for cand in label_raw]
 

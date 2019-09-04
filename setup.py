@@ -28,7 +28,7 @@ setup(
     },
     tests_require=['pytest'],
     install_requires=[
-        'pillow', 'tesserocr', 'matplotlib==2.2.4', 'scikit-learn', 'scikit-image<0.15', 'numpy',
+        'pillow', 'tesserocr', 'matplotlib==2.2.4', 'scikit-learn', 'scikit-image<0.15', 'numpy', 'scipy',
     ],
     classifiers=[
         'Intended Audience :: Developers',
