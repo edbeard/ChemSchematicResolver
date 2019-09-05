@@ -10,9 +10,8 @@ email: ejb207@cam.ac.uk
 
 from chemdataextractor.parse.cem import BaseParser, lenient_chemical_label
 from chemdataextractor.nlp.tokenize import WordTokenizer
-from chemdataextractor.utils import first
 from chemdataextractor.model import Compound
-from lxml import etree
+
 
 class LabelParser(BaseParser):
 
@@ -24,7 +23,7 @@ class LabelParser(BaseParser):
 
 
 class ChemSchematicResolverTokeniser(WordTokenizer):
-    """ Altered version of ChemDiagramExtractors word tokenizer that doesn't split on prime characters"""
+    """ Bespoke version of ChemDiagramExtractor's word tokenizer that doesn't split on prime characters"""
 
     #: Split before and after these sequences, wherever they occur, unless entire token is one of these sequences
     SPLIT = [

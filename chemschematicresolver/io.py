@@ -3,7 +3,14 @@
 Image IO
 ========
 Reading and writing images.
-Edited from Matt Swains FDE io.
+
+Module adapted by :-
+author: Ed Beard
+email: ejb207@cam.ac.uk
+
+from FigureDataExtractor (<CITATION>) :-
+author: Matthew Swain
+email: m.swain@me.com
 
 """
 
@@ -11,20 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-#import logging
+import logging
 
 import numpy as np
 from PIL import Image
 from skimage import img_as_float, img_as_ubyte, img_as_uint
 from skimage import io as skio
-from skimage.viewer import ImageViewer
 from skimage.color import gray2rgb
 import os
-from matplotlib import pyplot as plt
 
 from .model import Figure
 
-#log = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 def imread(f, raw=False):
@@ -40,7 +45,7 @@ def imread(f, raw=False):
     # Recommended in skimage-tutorials "Images are numpy arrays" because this what scikit-image uses internally
     # Transform greyscale images to RGB
     if len(img.shape) == 2:
-        #log.debug('Converting greyscale image to RGB...')
+        log.debug('Converting greyscale image to RGB...')
         img = gray2rgb(img)
 
     # Transform all images pixel values to be floating point values between 0 and 1 (i.e. not ints 0-255)
@@ -65,8 +70,8 @@ def imdel(f):
     """ Delete an image file
     """
 
-    #TODO : Add checks to see if file is correct type
     os.remove(f)
+
 
 def img_as_pil(arr, format_str=None):
     """Convert an scikit-image image (ndarray) to a PIL object.

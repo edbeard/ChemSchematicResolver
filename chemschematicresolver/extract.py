@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Functions for extracting Diagrams
+Extract
+=======
 
-========
+Functions to extract diagram-label pairs from schematic chemical diagrams.
 
-Toolkit for extracting diagram-label pairs from schematic chemical diagrams.
+author: Ed Beard
+email: ejb207@cam.ac.uk
 
 """
 from __future__ import absolute_import
@@ -158,6 +160,9 @@ def find_image_candidates(figs, filename):
 def extract_diagram(filename, debug=False):
     """ Converts a chemical diagram to SMILES string and extracted label candidates
 
+    :param filename: Input file name for extraction
+    :param debug: Bool to indicate debugging
+
     :return : List of label candidates and smiles
     :rtype : list[tuple[list[string],string]]
     """
@@ -175,13 +180,10 @@ def extract_diagram(filename, debug=False):
     # Create unreferenced binary copy
     bin_fig = copy.deepcopy(fig)
 
-    # Create image of raw pixels
-    raw_fig = imread(filename, raw=True)
-
     # Segment image into pixel islands
     panels = segment(bin_fig)
 
-    # Classify and preprocess images, to account for merging in segmentation
+    # Initial classify of images, to account for merging in segmentation
     labels, diags = classify_kmeans(panels, fig)
 
     # Preprocess image (eg merge labels that are small into larger labels)
@@ -225,7 +227,6 @@ def extract_diagram(filename, debug=False):
             ax.add_patch(label_rect)
 
         # Read the label
-        # TODO : Fix logic so it's a method of the label class
         diag.label = read_label(fig, label)
 
         # Add r-group variables if detected
@@ -253,7 +254,16 @@ def extract_diagram(filename, debug=False):
 
 
 def get_smiles(diag, smiles, r_smiles, extension='jpg'):
-    """ Identifies diagrams containing R-group"""
+    """ Identifies diagrams containing R-group.
+
+    :param diag: Input Diagram
+    :param smiles: List of smiles from all diagrams up to 'diag'
+    :param r_smiles: List of smiles extracted from R-Groups from all diagrams up to 'diag'
+    :param extension: Format of image file
+
+    :return smiles: List of smiles from all diagrams up to and including 'diag'
+    :return r_smiles: List of smiles extracted from R-Groups from all diagrams up to and including 'diag'
+    """
 
     # Resolve R-groups if detected
     if len(diag.label.r_group) > 0:

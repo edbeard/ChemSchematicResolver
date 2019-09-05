@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Image processing utilities
-
-========
+==========================
 
 A toolkit of image processing operations.
+
+author: Ed Beard
+email: ejb207@cam.ac.uk
 
 """
 

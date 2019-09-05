@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Image cleanup operations
+Image Cleanup Operations
+========================
 
-========
+Functions to clean data for improved extraction.
 
-Functions to clean data for improved extraction
+author: Ed Beard
+email: ejb207@cam.ac.uk
 
 """
 

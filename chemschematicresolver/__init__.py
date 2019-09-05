@@ -3,6 +3,7 @@
 """
 ChemSchematicResolver
 ===================
+
 Automatically extract data from schematic chemical diagrams
 """
 
@@ -24,5 +25,4 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-# from . import io, model, actions, ocr, r_group, parse, extract, validate
 from . import extract

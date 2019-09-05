@@ -5,6 +5,10 @@ Decorators
 
 Python decorators used throughout ChemSchematicResolver.
 
+From FigureDataExtractor (<CITATION>) :-
+author: Matthew Swain
+email: m.swain@me.com
+
 """
 
 from __future__ import absolute_import

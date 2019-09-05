@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Model for
-========
-Reading and writing images.
-Editted from Matt Swains FDE model.
+Model
+=====
+
+Models created to identify different regions of a chemical schematic diagram.
+
+Module adapted by :-
+author: Ed Beard
+email: ejb207@cam.ac.uk
+
+from FigureDataExtractor (<CITATION>) :-
+author: Matthew Swain
+email: m.swain@me.com
 
 """
 
@@ -13,10 +21,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 
-log = logging.getLogger(__name__)
-
 from . import decorators
 import numpy as np
+
+log = logging.getLogger(__name__)
+
 
 @decorators.python_2_unicode_compatible
 class Rect(object):

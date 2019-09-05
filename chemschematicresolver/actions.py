@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Image processing actions
+Image Processing Actions
+========================
 
-========
+A toolkit of image processing actions for segmentation.
 
-A toolkit of image processing actions for segmentation
+author: Ed Beard
+email: ejb207@cam.ac.uk
 
 """
 
@@ -26,19 +28,16 @@ from sklearn.cluster import KMeans
 import osra_rgroup
 
 from .model import Panel, Diagram, Label, Rect, Figure
-from .ocr import get_text, get_sentences, get_words, PSM, LABEL_WHITELIST
 from .io import imsave, imdel
-from .parse import LabelParser, ChemSchematicResolverTokeniser
 from .clean import find_repeating_unit, clean_output
-from .utils import crop, skeletonize, binarize, binary_close, binary_floodfill, merge_rect, \
-    convert_greyscale, merge_overlap
+from .utils import crop, skeletonize, binarize, binary_close, binary_floodfill, merge_rect, merge_overlap
 
 
 log = logging.getLogger(__name__)
 
 
 def segment(fig):
-    """ Segments image
+    """ Segments image.
 
     :param fig: Input Figure
     :return panels: List of segmented Panel objects
@@ -51,6 +50,7 @@ def segment(fig):
 
     log.debug(" The skeletonized pixel ratio is %s" % skel_pixel_ratio)
 
+    # Choose kernel size according to skeletonized pixel ratio
     if skel_pixel_ratio > 0.025:
         kernel = 4
         closed_fig = binary_close(bin_fig, size=kernel)
@@ -71,11 +71,12 @@ def segment(fig):
         closed_fig = binary_close(bin_fig, size=kernel)
         log.debug("Segmentation kernel size = %s" % kernel)
 
+    # Using a binary floodfill to identify panel regions
     fill_img = binary_floodfill(closed_fig)
     tag_img = binary_tag(fill_img)
     panels = get_bounding_box(tag_img)
 
-    # Removing tiny pixel islands that are determined to be noise
+    # Removing relatively tiny pixel islands that are determined to be noise
     area_threshold = fig.get_bounding_box().area / 200
     width_threshold = fig.get_bounding_box().width / 150
     panels = [panel for panel in panels if panel.area > area_threshold or panel.width > width_threshold]
@@ -91,7 +92,7 @@ def classify_kmeans(panels, fig, skel=True):
 
 
 def get_labels_and_diagrams_k_means_clustering(panels, fig, skel=True):
-    """ Splits into labels and diagrams using K-means clustering by the skeletonized area ratio or panel height
+    """ Splits into labels and diagrams using K-means clustering by the skeletonized area ratio or panel height.
 
     :param panels: List of Panel objects to be clustered
     :param fig: Input Figure
@@ -134,7 +135,14 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig, skel=True):
 
 
 def preprocessing(labels, diags, fig):
-    """Preprocessing steps, expand as needed"""
+    """Pre-processing steps before final K-means classification
+    :param labels: List of Label objects
+    :param diags: List of Diagram objects
+    :param fig: Figure object
+    
+    :return out_labels: List of Labels after merging and re-tagging
+    :return out_diags: List of Diagrams after re-tagging
+    """
 
     # Remove repeating unit indicators
     labels, diags = find_repeating_unit(labels, diags, fig)
@@ -147,16 +155,24 @@ def preprocessing(labels, diags, fig):
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
 
-    # Relabelling all diagrams and labels
-    relabelled_panels = relabel_panels(labels_converted + diags)
-    out_labels = relabelled_panels[:len(labels_converted)]
-    out_diags = relabelled_panels[len(labels_converted):]
+    # Re-tagging all diagrams and labels
+    retagged_panels = retag_panels(labels_converted + diags)
+    out_labels = retagged_panels[:len(labels_converted)]
+    out_diags = retagged_panels[len(labels_converted):]
 
     return out_labels, out_diags
 
 
-def label_diags(labels, diags, fig_bbox, rate=1):
-    """ Pair all diags to labels using assign_label_to_diag"""
+def label_diags(labels, diags, fig_bbox):
+    """ Pair all Diagrams to Labels.
+
+    :param labels: List of Label objects
+    :param diags: List of Diagram objects
+    :param fig_bbox: Co-ordinates of the bounding box of the entire figure
+
+    :returns: List of Diagrams with assigned Labels
+
+    """
 
     # Sort diagrams from largest to smallest
     diags.sort(key=lambda x: x.area, reverse=True)
@@ -168,12 +184,11 @@ def label_diags(labels, diags, fig_bbox, rate=1):
     if len(failed_diag_label) == 0:
         return initial_sorting
 
-    # Find average position of label relative to diagram (NSEW)
+    # Find average position of label relative to diagram for successful pairings (denoted with compass points: NSEW)
     successful_diag_label = [diag for diag in diags if diag not in failed_diag_label]
 
+    # Where no sucessful pairings found, attempt looking 'South' for all diagrams (most common relative label position)
     if len(successful_diag_label) == 0:
-
-        # Attempt looking 'South' for all diagrams (most common realtive label position)
         altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, 'S', fig_bbox) for diag in failed_diag_label]
         if len(get_duplicate_labelling(altered_sorting)) != 0:
             altered_sorting = initial_sorting
@@ -181,16 +196,15 @@ def label_diags(labels, diags, fig_bbox, rate=1):
         else:
             return altered_sorting
     else:
-        # Compass positions of labels relative to diagram
+        # Get compass positions of labels relative to diagram
         diag_compass = [diag.compass_position(diag.label) for diag in successful_diag_label if diag.label]
         mode_compass = max(diag_compass, key=diag_compass.count)
 
-        # Then, expand outwards in this direction for all failures.
+        # Expand outwards in compass direction for all failures
         altered_sorting = [assign_label_to_diag_postprocessing(diag, labels, mode_compass, fig_bbox) for diag in failed_diag_label]
 
         # Check for duplicates after relabelling
         failed_diag_label = get_duplicate_labelling(altered_sorting + successful_diag_label)
-
         successful_diag_label = [diag for diag in successful_diag_label if diag not in failed_diag_label]
 
         # If no duplicates return all results
@@ -206,8 +220,99 @@ def label_diags(labels, diags, fig_bbox, rate=1):
     return diags_with_labels + successful_diag_label
 
 
+def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
+    """ Iteratively expands the bounding box of diagram until it intersects a Label object
+
+    :param diag: Input Diagram object to expand from
+    :param labels: List of Label objects
+    :param fig_bbox: Panel object representing the co-ordinates for the entire Figure
+    :param rate: Number of pixels to expand by upon each iteration
+
+    :return diag: Diagram with Label object assigned
+    """
+
+    probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
+    found = False
+    max_threshold_width = fig_bbox.width
+    max_threshold_height = fig_bbox.height
+
+    while found is False and (probe_rect.width < max_threshold_width or probe_rect.height < max_threshold_height):
+        # Increase border value each loop
+        probe_rect.right = probe_rect.right + rate
+        probe_rect.bottom = probe_rect.bottom + rate
+        probe_rect.left = probe_rect.left - rate
+        probe_rect.top = probe_rect.top - rate
+
+        for label in labels:
+            if probe_rect.overlaps(label):
+                found = True
+                print(diag.tag, label.tag)
+                diag.label = label
+    return diag
+
+
+def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=1):
+    """ Iteratively expands the bounding box of diagram in the specified compass direction
+
+    :param diag: Input Diagram object to expand from
+    :param labels: List of Label objects
+    :param direction: String representing determined compass direction (allowed values: 'E', 'S', 'W', 'N')
+    :param fig_bbox: Panel object representing the co-ordinates for the entire Figure
+    :param rate: Number of pixels to expand by upon each iteration
+    """
+
+    probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
+    found = False
+
+    def label_loop():
+
+        for label in labels:
+            # Only accepting labels in the average direction
+            if diag.compass_position(label) != direction:
+                pass
+            elif probe_rect.overlaps(label):
+                print(diag.tag, label.tag)
+                diag.label = label
+                return True
+
+        return False
+
+    # Increase border value each loop
+    if direction == 'E':
+        while found is False and probe_rect.right < fig_bbox.right:
+            probe_rect.right = probe_rect.right + rate
+            found = label_loop()
+
+    elif direction == 'S':
+        while found is False and probe_rect.bottom < fig_bbox.bottom:
+            probe_rect.bottom = probe_rect.bottom + rate
+            found = label_loop()
+
+    elif direction == 'W':
+        while found is False and probe_rect.left > fig_bbox.left:
+            probe_rect.left = probe_rect.left - rate
+            found = label_loop()
+
+    elif direction == 'N':
+        while found is False and probe_rect.top > fig_bbox.top:
+            probe_rect.top = probe_rect.top - rate
+            found = label_loop()
+    else:
+        return diag
+
+    return diag
+
+
 def read_diagram_pyosra(diag, extension='jpg', debug=True):
-    """ Converts a diagram to SMILES using PYOSRA"""
+    """ Converts a diagram to SMILES using pyosra
+
+    :param diag: Diagram to be extracted
+    :param extension: String file extension
+    :param debug: Bool inicating debug mode
+
+    :return smile: String of extracted chemical SMILE
+
+    """
 
     # Add some padding to image to help resolve characters on the edge
     padded_img = pad(diag.fig.img, ((5, 5), (5, 5), (0, 0)), mode='constant', constant_values=1)
@@ -227,7 +332,14 @@ def read_diagram_pyosra(diag, extension='jpg', debug=True):
 
 
 def remove_diag_pixel_islands(diags, fig):
-    """ Removes all small pixel islands from the diagram """
+    """ Removes small pixel islands from the diagram
+
+    :param diags: List of input Diagrams
+    :param fig: Figure object
+
+    :return diags: List of Diagrams with small pixel islands removed
+
+    """
 
     for diag in diags:
 
@@ -254,10 +366,12 @@ def remove_diag_pixel_islands(diags, fig):
 
 
 def pixel_ratio(fig, diag):
-    """ Calculates the ratio of 'on' pixels to bbox area for binary figure
+    """ Calculates the ratio of 'on' pixels to bounding box area for binary figure
 
-    :param Figure : Input binary figure
-    :param Panel : Input rectangle
+    :param fig : Input binary Figure
+    :param diag : Area to calculate pixel ratio
+
+    :return ratio: Float detailing ('on' pixels / bounding box area)
     """
 
     cropped_img = crop(fig.img, diag.left, diag.right, diag.top, diag.bottom)
@@ -287,15 +401,15 @@ def get_bounding_box(fig):
     regions = regionprops(fig.img)
     for region in regions:
         y1, x1, y2, x2 = region.bbox
-        panels.append(Panel(x1, x2, y1, y2, region.label - 1)) # Sets tags to start from 0
+        panels.append(Panel(x1, x2, y1, y2, region.label - 1))# Sets tags to start from 0
     return panels
 
 
-def relabel_panels(panels):
-    """ Relabel panels.
+def retag_panels(panels):
+    """ Re-tag panels.
 
     :param panels: List of Panel objects
-    :returns: List of Panel objects
+    :returns: List of re-tagged Panel objects
     """
 
     for i, panel in enumerate(panels):
@@ -329,8 +443,48 @@ def order_by_area(panels):
     return panels
 
 
+def merge_label_horizontally(merge_candidates):
+    """ Iteratively attempt to merge horizontally
+
+    :param merge_candidates: Input list of Panels to be merged
+    :return merge_candidates: List of Panels after merging
+    """
+
+    done = False
+
+    # Identifies panels within horizontal merging criteria
+    while done is False:
+        ordered_panels = order_by_area(merge_candidates)
+        merge_candidates, done = merge_loop_horizontal(ordered_panels)
+
+    merge_candidates, done = merge_all_overlaps(merge_candidates)
+    return merge_candidates
+
+
+def merge_labels_vertically(merge_candidates):
+    """ Iteratively attempt to merge vertically
+
+    :param merge_candidates: Input list of Panels to be merged
+    :return merge_candidates: List of Panels after merging
+    """
+
+    # Identifies panels within horizontal merging criteria
+    ordered_panels = order_by_area(merge_candidates)
+    merge_candidates = merge_loop_vertical(ordered_panels)
+
+    merge_candidates, done = merge_all_overlaps(merge_candidates)
+    return merge_candidates
+
+
 def merge_loop_horizontal(panels):
-    """Goes through the loop for merging."""
+    """ Iteratively merges panels by relative proximity to each other along the x axis.
+        This is repeated until no panels are merged by the algorithm
+
+    :param panels: List of Panels to be merged.
+
+    :return output_panels: List of merged panels
+    :return done: Bool indicating whether a merge occurred
+    """
 
     output_panels = []
     blacklisted_panels = []
@@ -351,19 +505,24 @@ def merge_loop_horizontal(panels):
                 blacklisted_panels.extend([a, b])
                 done = False
 
-    print('Length of blacklisted : %s' % len(blacklisted_panels))
-    print('Length of output panels : %s' % len(output_panels))
+    log.debug('Length of blacklisted : %s' % len(blacklisted_panels))
+    log.debug('Length of output panels : %s' % len(output_panels))
 
-    for panel in panels:
-        if panel not in blacklisted_panels:
-            output_panels.append(panel)
+    output_panels = [panel for panel in panels if panel not in blacklisted_panels]
+    output_panels = retag_panels(output_panels)
 
-    output_panels = relabel_panels(output_panels)
     return output_panels, done
 
 
 def merge_loop_vertical(panels):
-    """ Merging vertical panels within threshold"""
+    """ Iteratively merges panels by relative proximity to each other along the y axis.
+        This is repeated until no panels are merged by the algorithm
+
+    :param panels: List of Panels to be merged.
+
+    :return output_panels: List of merged panels
+    :return done: Bool indicating whether a merge occurred
+    """
 
     output_panels = []
     blacklisted_panels = []
@@ -374,10 +533,6 @@ def merge_loop_vertical(panels):
         if (abs(a.left - b.left) < 3 * min(a.height, b.height) or abs(a.center[0] - b.center[0]) < 3 * min(a.height, b.height)) \
                 and abs(a.center[1] - b.center[1]) < 3 * min(a.height, b.height) \
                 and min(abs(a.top - b.bottom), abs(b.top - a.bottom)) < 2 * min(a.height, b.height):
-                # and abs(a.height - b.height) < 0.3 * max(a.height, b.height):
-
-        # if abs(a.center[0] - b.center[0]) < 0.5 * max(a.width, b.width) and abs(a.center[1] - b.center[1]) < 3 * max(a.height, b.height) \
-        #         and abs(a.height - b.height) < 0.3 * max(a.height, b.height) and abs(a.width - b.width) < 2 * max(a.width, b.width):
 
             merged_rect = merge_rect(a, b)
             merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -388,13 +543,20 @@ def merge_loop_vertical(panels):
         if panel not in blacklisted_panels:
             output_panels.append(panel)
 
-    output_panels = relabel_panels(output_panels)
+    output_panels = retag_panels(output_panels)
 
     return output_panels
 
 
 def get_one_to_merge(all_combos, panels):
-    """Returns the updated panel list once a panel needs to be merged"""
+    """Merges the first overlapping set of panels found and an returns updated panel list
+
+    :param all_combos: List of Tuple(Panel, Panel) objects of all possible combinations of the input 'panels' variable
+    :param panels: List of input Panels
+
+    :return panels: List of updated panels after one overlap is merged
+    :return: Bool indicated whether all overlaps have been completed
+    """
 
     for a, b in all_combos:
 
@@ -410,14 +572,22 @@ def get_one_to_merge(all_combos, panels):
 
 
 def convert_panels_to_labels(panels):
-    """ Converts a list of panels to a list of labels"""
+    """ Converts a list of panels to a list of labels
 
-    # TODO : Implement this whenever this conversion is made
+    :param panels: Input list of Panels
+    :return : List of Labels
+    """
+
     return [Label(panel.left, panel.right, panel.top, panel.bottom, panel.tag) for panel in panels]
 
 
 def merge_all_overlaps(panels):
-    """ Merges all overlapping rectangles together"""
+    """ Merges all overlapping rectangles together
+
+    :param panels : Input list of Panels
+    :return output_panels: List of merged panels
+    :return all_merged: Bool indicating whether all merges are completed
+    """
 
     all_merged = False
 
@@ -425,37 +595,16 @@ def merge_all_overlaps(panels):
         all_combos = list(itertools.combinations(panels, 2))
         panels, all_merged = get_one_to_merge(all_combos, panels)
 
-    output_panels = relabel_panels(panels)
+    output_panels = retag_panels(panels)
     return output_panels, all_merged
 
 
-def merge_label_horizontally(merge_candidates):
-    """ Try to merge horizontally by brute force method"""
-
-    done = False
-
-    # Identifies panels within horizontal merging criteria
-    while done is False:
-        ordered_panels = order_by_area(merge_candidates)
-        merge_candidates, done = merge_loop_horizontal(ordered_panels)
-
-    merge_candidates, done = merge_all_overlaps(merge_candidates)
-    return merge_candidates
-
-
-def merge_labels_vertically(merge_candidates):
-    """ Try to merge vertically using brute force method"""
-
-    # Identifies panels within horizontal merging criteria
-    ordered_panels = order_by_area(merge_candidates)
-    merge_candidates = merge_loop_vertical(ordered_panels)
-
-    merge_candidates, done = merge_all_overlaps(merge_candidates)
-    return merge_candidates
-
-
 def get_duplicate_labelling(labelled_diags):
-    """ Returns a set of diagrams which share a label"""
+    """ Returns diagrams sharing a Label object with other diagrams.
+
+    :param labelled_diags: List of Diagrams with Label objects assigned
+    :return failed_diag_label: List of Diagrams that share a Label object with another Diagram
+    """
 
     failed_diag_label = set(diag for diag in labelled_diags if not diag.label)
     filtered_labelled_diags = [diag for diag in labelled_diags if diag not in failed_diag_label]
@@ -473,9 +622,13 @@ def remove_duplicates(diags, fig_bbox, rate=1):
     """
     Removes the least likely of the duplicate results.
     Likeliness is determined from the distance from the bounding box
+
     :param diags: All detected diagrams with assigned labels
-    :param fig_bbox: Bounding box of the entire figure
-    :return output_diags, output_labelless_diags : List of diagrams with labels and without from duplicates
+    :param fig_bbox: Panel object representing the co-ordinates for the entire Figure
+    :param rate: Number of pixels to expand by upon each iteration
+
+    :return output_diags : List of Diagrams with Labels
+    :return output_labelless_diags : List of Diagrams with Labels removed due to duplicates
     """
 
     output_diags = []
@@ -527,73 +680,5 @@ def remove_duplicates(diags, fig_bbox, rate=1):
         output_labelless_diags.extend(labelless_diags)
 
     return output_diags, output_labelless_diags
-
-
-def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
-    """ Iteratively expands the bounding box of diagram until it reaches a label"""
-
-    probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
-    found = False
-    max_threshold_width = fig_bbox.width
-    max_threshold_height = fig_bbox.height
-
-    while found is False and (probe_rect.width < max_threshold_width or probe_rect.height < max_threshold_height):
-        # Increase border value each loop
-        probe_rect.right = probe_rect.right + rate
-        probe_rect.bottom = probe_rect.bottom + rate
-        probe_rect.left = probe_rect.left - rate
-        probe_rect.top = probe_rect.top - rate
-
-        for label in labels:
-            if probe_rect.overlaps(label):
-                found = True
-                print(diag.tag, label.tag)
-                diag.label = label
-    return diag
-
-
-def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=1):
-    """ Iteratively expands the bounding box of diagram in the specified direction"""
-
-    probe_rect = Rect(diag.left, diag.right, diag.top, diag.bottom)
-    found = False
-
-    def label_loop():
-
-        for label in labels:
-            # Only accepting labels in the average direction
-            if diag.compass_position(label) != direction:
-                pass
-            elif probe_rect.overlaps(label):
-                print(diag.tag, label.tag)
-                diag.label = label
-                return True
-
-        return False
-
-    # Increase border value each loop
-    if direction == 'E':
-        while found is False and probe_rect.right < fig_bbox.right:
-            probe_rect.right = probe_rect.right + rate
-            found = label_loop()
-
-    elif direction == 'S':
-        while found is False and probe_rect.bottom < fig_bbox.bottom:
-            probe_rect.bottom = probe_rect.bottom + rate
-            found = label_loop()
-
-    elif direction == 'W':
-        while found is False and probe_rect.left > fig_bbox.left:
-            probe_rect.left = probe_rect.left - rate
-            found = label_loop()
-
-    elif direction == 'N':
-        while found is False and probe_rect.top > fig_bbox.top:
-            probe_rect.top = probe_rect.top - rate
-            found = label_loop()
-    else:
-        return diag
-
-    return diag
 
 

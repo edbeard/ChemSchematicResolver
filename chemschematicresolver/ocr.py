@@ -5,8 +5,13 @@ Optical Character Recognition
 
 Extract text from images using Tesseract.
 
-Module taken from FigureDataExtractor <ADD LINK HERE>
+Module adapted by :-
+author: Ed Beard
+email: ejb207@cam.ac.uk
 
+from FigureDataExtractor (<CITATION>) :-
+author: Matthew Swain
+email: m.swain@me.com
 """
 
 from __future__ import absolute_import
@@ -163,6 +168,7 @@ def get_words(blocks):
                     words.append(word)
     return words
 
+
 def get_lines(blocks):
     """Convert list of text blocks into a nested list of lines, each of which contains a list of words.
 
@@ -195,8 +201,6 @@ def get_sentences(blocks):
                 sentences.append(line.text.replace(',', ' ')) # NB - commas switched for spaces to improve tokenization
     return sentences
 
-def get_text_binarize(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=None, img_orientation=None):
-    """ Ge"""
 
 def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=None, img_orientation=None):
     """Get text elements in image.
@@ -358,9 +362,6 @@ def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=Non
     return blocks
 
 
-# TODO: Add a parent weakref that points to the containing element?
-
-
 @decorators.python_2_unicode_compatible
 class TextElement(model.Rect):
     """Abstract base class for all text elements."""
@@ -393,8 +394,6 @@ class TextElement(model.Rect):
 
     def __str__(self):
         return '<%s: %r>' % (self.__class__.__name__, self.text)
-
-    # TODO: Serialization: Need option to specify how 'deep' to serialize child elements
 
 
 class TextBlock(TextElement, collections.MutableSequence):

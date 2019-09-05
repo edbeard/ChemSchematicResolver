@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
+R-Group
+=======
+
 Scripts for identifying R-Group structure diagrams
 
-========
 author: Ed Beard
 email: ejb207@cam.ac.uk
 
@@ -38,7 +40,7 @@ ALPHANUMERIC_REGEX = re.compile('^((d-)?(\d{1,2}[A-Za-z]{1,2}[′″‴‶‷⁗
 
 
 def detect_r_group(diag):
-    """ Determines whether a label represents an R-Group structure, and if so gives the variable and value
+    """ Determines whether a label represents an R-Group structure, and if so gives the variable and value.
 
     :param diag: Diagram object to search for R-Group indicators
     :return diag: Diagram object with R-Group variable and value candidates assigned.
@@ -52,7 +54,7 @@ def detect_r_group(diag):
             if token.text is '=':
                 log.info('Found R-Group descriptor %s' % token.text)
                 if i > 0:
-                    log.info('Variable candidate is %s' % sentence.tokens[i-1] )
+                    log.info('Variable candidate is %s' % sentence.tokens[i-1])
                 if i < len(sentence.tokens) - 1:
                     log.info('Value candidate is %s' % sentence.tokens[i+1])
 
@@ -96,7 +98,6 @@ def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bl
     :return r_groups: List of R-Group objects with assigned label candidates
     """
 
-    # TODO : Combine this logic into one line?
     # Remove irrelevant characters and blacklisted words
     candidates = [token for token in sentence.tokens if token.text not in blacklist_chars]
     candidates = [token for token in candidates if token.text not in blacklist_words]
@@ -120,7 +121,11 @@ def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bl
 def filter_repeated_labels(r_groups):
     """
      Detects repeated variable values.
-     When found, this is determined to be an 'or' case so relative label assignment ensues
+     When found, this is determined to be an 'or' case so relative label assignment ensues.
+
+     :param r_groups: Input list of R-Group objects
+     :return output_r_groups: R-Group objects corrected for 'or' statements
+
      """
 
     or_vars = []
@@ -170,13 +175,21 @@ def filter_repeated_labels(r_groups):
 
 
 def get_rgroup_smiles(diag, extension='jpg', debug=True):
-    """ Uses pyosra to extract the SMILES from a chemical diagram"""
+    """ Extract SMILES from a chemical diagram (powered by pyosra)
+
+    :param diag: Input Diagram
+    :param extension: String indicating format of input file
+    :param debug: Bool to indicate debugging
+
+    :return labels_and_smiles: List of Tuple(List of label candidates, SMILES) objects
+    """
 
     # Add some padding to image to help resolve characters on the edge
-    padded_img = pad(diag.fig.img, ((5,5), (5,5), (0, 0)), mode='constant', constant_values=1)
+    padded_img = pad(diag.fig.img, ((5, 5), (5, 5), (0, 0)), mode='constant', constant_values=1)
 
     # Save a temp image
-    io.imsave('r_group_temp.' + extension, padded_img)
+    img_name = 'r_group_temp.' + extension
+    io.imsave(img_name, padded_img)
 
     osra_input = []
     label_cands = []
@@ -199,10 +212,10 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True):
     # TODO : Attempt to resolve compound values using cirpy / OPSIN
 
     # Run osra on temp image
-    smiles = osra_rgroup.read_rgroup(osra_input, input_file="r_group_temp.jpg", verbose=True, debug=True)
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True)
 
     if not debug:
-        io.imdel('r_group_temp.jpg')
+        io.imdel(img_name)
 
     smiles = [actions.clean_output(smile) for smile in smiles]
 
@@ -214,7 +227,12 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True):
 
 
 def clean_chars(value, cleanchars):
-    """ Remove chars for cleaning"""
+    """ Remove chars for cleaning
+    :param value: String to be cleaned
+    :param cleanchars: Characters to remove from value
+
+    :return value: Cleaned string
+    """
 
     for char in cleanchars:
         value = value.replace(char, '')
@@ -223,24 +241,22 @@ def clean_chars(value, cleanchars):
 
 
 def resolve_structure(compound):
-    """ Resolves compound structure using cirpy"""
+    """ Resolves a compound structure using CIRPY """
 
     smiles = cirpy.resolve(compound, 'smiles')
-
     return smiles
 
 
 def convert_r_groups_to_tuples(r_groups):
-    """ Converts a list of Rgroup model objets to Rgroup tuples"""
+    """ Converts a list of R-Group model objects to R-Group tuples"""
 
     return [r_group.convert_to_tuple() for r_group in r_groups]
 
 
 def standardize_values(r_groups):
-    """ Converts values to a format compatible with pyosra"""
+    """ Converts values to a format compatible with diagram extraction"""
 
     # List of tuples pairing multiple definitions to the appropriate SMILES string
-    # TODO : SHould define these globally?
     alkyls = [('CH', ['methyl']),
               ('C2H', ['ethyl']),
               ('C3H', ['propyl']),
@@ -264,6 +280,9 @@ def standardize_values(r_groups):
 def separate_duplicate_r_groups(r_groups):
     """
      Separate duplicate R-group variables into separate lists
+
+     :param r_groups: List of input R-Group objects to be tested for duplicates
+     :return output: List of R-Groups with duplicates separated
     """
 
     if len(r_groups) is 0:
@@ -286,7 +305,7 @@ def separate_duplicate_r_groups(r_groups):
     if not equal_length:
         return [r_groups]
 
-    # Populate dictionary for each unque variable
+    # Populate dictionary for each unique variable
     for var in unique_vars:
         for r_group in r_groups:
             if var == r_group.var:
@@ -298,8 +317,8 @@ def separate_duplicate_r_groups(r_groups):
             try:
                 temp.append(vars_dict[var.text][i])
             except Exception as e:
-                print("An error occured while attempting to separate duplicate r-groups")
-                print(e)
+                log.error("An error occured while attempting to separate duplicate r-groups")
+                log.error(e)
         output.append(temp)
 
     return output
