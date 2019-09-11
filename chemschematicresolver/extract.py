@@ -209,6 +209,15 @@ def extract_diagram(filename, debug=False):
     # Add label information to the appropriate diagram by expanding bounding box
     labelled_diags = label_diags(labels, diags, fig_bbox)
 
+    # Calulate the area to (# of labels) ratio
+    area_label_number_ratio = fig_bbox.perimeter / len(labelled_diags)
+    metric_threshold = 715.75
+
+    # Throw up warning if the resolution is too low
+    if area_label_number_ratio > metric_threshold:
+        log.error('The resolution of the diagram is too low for accurate extraction.')
+        raise Exception('The resolution of the diagram is too low for accurate extraction.')
+
     for diag in labelled_diags:
 
         label = diag.label
@@ -229,14 +238,14 @@ def extract_diagram(filename, debug=False):
             ax.text(label.left, label.top + label.height / 4, '[%s]' % label.tag, size=label.height / 5, color='r')
             ax.add_patch(label_rect)
 
-        # Read the label
-        diag.label = read_label(fig, label)
+            # Read the label
+            diag.label = read_label(fig, label)
 
-        # Add r-group variables if detected
-        diag = detect_r_group(diag)
+            # Add r-group variables if detected
+            diag = detect_r_group(diag)
 
-        # Get SMILES for output
-        smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
+            # Get SMILES for output
+            smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
 
     log.info("The results are :")
     log.info('R-smiles %s' % r_smiles)
