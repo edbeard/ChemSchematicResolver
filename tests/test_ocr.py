@@ -4,36 +4,28 @@ test_ocr
 ========
 
 Test optical character recognition
-
+TODO : Choose a working OCR example... OR add neural net to improve
 """
 
 import unittest
 import os
 import chemschematicresolver as csr
-from skimage.transform import rescale
 import copy
-
-
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
-examples_dir = os.path.join(train_dir, 'train_imgs')
-ocr_examples_dir = os.path.join(train_dir, 'train_ocr')
 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
+tests_dir = os.path.abspath(__file__)
+test_ocr_dir = os.path.join(os.path.dirname(tests_dir), 'data', 'ocr')
+
+
 class TestOcr(unittest.TestCase):
 
-    def test_get_lines(self):
-        pass
-
-    def test_ocr_whole_image(self):
-        '''
+    def test_ocr_all_imgs(self):
+        """
         Uses the OCR module on the whole image to identify text blocks
-        :return:
-        '''
-
-        test_imgs = [os.path.join(examples_dir, file) for file in os.listdir(examples_dir)]
+        """
+        test_imgs = [os.path.join(test_ocr_dir, file) for file in os.listdir(test_ocr_dir)]
 
         for img_path in test_imgs:
             fig = csr.io.imread(img_path)  # Read in float and raw pixel images
@@ -43,28 +35,18 @@ class TestOcr(unittest.TestCase):
             out_fig, ax = plt.subplots(figsize=(10, 6))
             ax.imshow(fig.img)
 
-            for text_block in text_blocks:
-
-                diag_rect = mpatches.Rectangle((text_block.left, text_block.top), text_block.width, text_block.height,
-                                               fill=False, edgecolor='r', linewidth=2)
-                ax.add_patch(diag_rect)
-
-            plt.show()
+        self.assert_equal(text_blocks[0].text, '1: R1=R2=H:TQEN\n2:R1=H,R2=OMe:T(MQ)EN\n3: R1=R2=OMe:T(TMQ)EN\n\n')
 
     def test_ocr_r_group(self):
         """
         Used to test different functions on OCR recognition"""
 
-        path = os.path.join(ocr_examples_dir, 'S0143720816301115_gr1_text.jpg')
+        path = os.path.join(test_ocr_dir, 'S0143720816301115_gr1_text.jpg')
 
         fig = csr.io.imread(path)
         copy_fig = copy.deepcopy(fig)
 
         bin_fig = copy_fig
-
-        # Trying binarization
-        #bin_fig = csr.actions.binarize(copy_fig, threshold=0.7)
-        # Create output image
 
         text_blocks = csr.ocr.get_text(bin_fig.img)
 

@@ -3,21 +3,20 @@
 test_extract
 ========
 
-Test extraction of Chemical Schematic Images
+Test extraction of chemical schematic diagrams
 
 """
 
 import unittest
 import os
 import chemschematicresolver as csr
-from skimage.transform import rescale
-import copy
 
 tests_dir = os.path.dirname(os.path.abspath(__file__))
-train_dir = os.path.join(os.path.dirname(tests_dir), 'train')
-train_markush_small_dir = os.path.join(train_dir, 'train_markush_small')
-r_group_diag_dir = os.path.join(train_dir, 'r_group_diags')
-train_imgs_dir = os.path.join(train_dir, 'train_imgs')
+img_dir = os.path.join(tests_dir, 'data')
+
+# train_markush_small_dir = os.path.join(train_dir, 'train_markush_small')
+# r_group_diag_dir = os.path.join(train_dir, 'r_group_diags')
+# train_imgs_dir = os.path.join(train_dir, 'train_imgs')
 
 
 class TestExtract(unittest.TestCase):
@@ -26,16 +25,16 @@ class TestExtract(unittest.TestCase):
     def do_extract_small(self, filename, gold):
         """ Extract images from the small markush directory"""
 
-        path = os.path.join(train_markush_small_dir, filename)
+        path = os.path.join(img_dir, filename)
         result = csr.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
         return result
 
-    def do_extract_all_imgs(self, dir_name=train_imgs_dir):
+    def do_extract_all_imgs(self, dir_name=img_dir):
         """ Run extraction on the 'train_imgs' directory (no assertions)"""
 
-        test_path = train_imgs_dir
+        test_path = img_dir
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             full_path = os.path.join(test_path, img_path)
@@ -50,6 +49,8 @@ class TestExtract(unittest.TestCase):
         gold = [(['EtNAPH'], 'c1c2n(c3c(c2ccc1)cc(cc3)/C=C/c1ccc(/C=C/c2ccc3n(c4ccccc4c3c2)CC)c2c1cccc2)CC'),
                 (['MeNAPH'], 'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(C)cc4)c4ccc(cc4)C)cc2)cccc3)cc1)c1ccc(C)cc1)C'),
                 (['MeONAPH'], 'c1c(ccc(c1)N(c1ccc(/C=C/c2c3c(c(cc2)/C=C/c2ccc(N(c4ccc(OC)cc4)c4ccc(cc4)OC)cc2)cccc3)cc1)c1ccc(OC)cc1)OC')]
+
+        foo = img_dir
 
         self.do_extract_small('S014372081630119X_gr1.jpg', gold)
 
@@ -85,7 +86,7 @@ class TestExtract(unittest.TestCase):
     def do_extract_r_group_diags(self, filename, gold):
         """ Extract images from the small markush directory"""
 
-        path = os.path.join(r_group_diag_dir, filename)
+        path = os.path.join(img_dir, filename)
         result = csr.extract.extract_diagram(path, debug=True)
         self.assertEqual(gold, result)
 
@@ -140,7 +141,7 @@ class TestExtract(unittest.TestCase):
     def do_extract_train_imgs(self, filename, gold):
         """ Extract images from the train_imgs directory"""
 
-        path = os.path.join(train_imgs_dir, filename)
+        path = os.path.join(img_dir, filename)
         result = csr.extract.extract_diagram(path, debug=False)
         self.assertEqual(gold, result)
 
@@ -151,7 +152,7 @@ class TestExtract(unittest.TestCase):
         self.do_extract_train_imgs('S0143720816301115_gr1.jpg', gold)
 
     def test_extract_document(self):
-        path = os.path.join(train_dir, 'train_docs', '10.1039_C4TC01753F.html')
+        path = os.path.join(img_dir, 'train_docs', '10.1039_C4TC01753F.html')
         records = csr.extract.extract_document(path)
         import pprint
         pp = pprint.PrettyPrinter(indent=4)

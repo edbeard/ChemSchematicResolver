@@ -25,6 +25,7 @@ import warnings
 
 import numpy as np
 import tesserocr
+from chemdataextractor.doc.text import Sentence
 
 from . import decorators, io, model
 from .utils import convert_greyscale, crop, pad
@@ -71,7 +72,7 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
 
     if len(raw_sentences) is not 0:
         # Tag each sentence
-        tagged_sentences = [model.Sentence(sentence, word_tokenizer=ChemSchematicResolverTokeniser(),
+        tagged_sentences = [Sentence(sentence, word_tokenizer=ChemSchematicResolverTokeniser(),
                                            parsers=[LabelParser()]) for sentence in raw_sentences]
     else:
         tagged_sentences = []
@@ -198,7 +199,8 @@ def get_sentences(blocks):
     for block in blocks:
         for para in block:
             for line in para:
-                sentences.append(line.text.replace(',', ' ')) # NB - commas switched for spaces to improve tokenization
+                # sentences.append(line.text.replace(',', ' ')) # NB - commas switched for spaces to improve tokenization
+                sentences.append(line.text)
     return sentences
 
 

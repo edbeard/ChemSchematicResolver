@@ -8,53 +8,35 @@ Test R-group resolution operations.
 """
 
 from chemschematicresolver import r_group
-from chemschematicresolver.model import RGroup
-from chemdataextractor.doc.text import Token, Lexicon
-#from molvs import standardize_smiles
+
 import unittest
+
+
+def do_resolve(comp):
+    raw_smile = r_group.resolve_structure(comp)
+    return raw_smile
+
 
 class TestRgroup(unittest.TestCase):
     """ Test functios from the r_group.py module"""
-
-    def do_resolve(self, comp):
-        raw_smile = r_group.resolve_structure(comp)
-        #std_smile = standardize_smiles(raw_smile)
-        return raw_smile
-
 
     def test_resolve_structure_1(self):
 
         comp = '4-nitrophenyl'
         gold = '[O-][N+](=O)c1ccccc1'
-        result = self.do_resolve(comp)
+        result = do_resolve(comp)
         self.assertEqual(gold, result)
-
 
     def test_resolve_structure_2(self):
 
         comp = '2-chloro-4-nitrophenol'
-        gold = '[O-][N+](=O)c1ccccc1'
-        result = self.do_resolve(comp)
-        self.assertEqual(gold, result)
-
-
-    def test_resolve_structure_3(self):
-
-        comp = '5-nitrothiazol-2-yl'
-        gold = '[O-][N+](=O)c1ccccc1'
-        result = self.do_resolve(comp)
+        gold = 'Oc1ccc(cc1Cl)[N+]([O-])=O'
+        result = do_resolve(comp)
         self.assertEqual(gold, result)
 
     def test_resolve_structure_4(self):
 
         comp = 'Hexyl'
-        gold = ''
-        result = self.do_resolve(comp)
+        gold = '[O-][N+](=O)c1cc(c(Nc2c(cc(cc2[N+]([O-])=O)[N+]([O-])=O)[N+]([O-])=O)c(c1)[N+]([O-])=O)[N+]([O-])=O'
+        result = do_resolve(comp)
         self.assertEqual(gold, result)
-
-    def test_standardize_values_alkyls(self):
-
-        var_value_example = [RGroup(Token('R', 0, 1, Lexicon()), Token('Octyl', 4, 5, Lexicon()), [''])]
-        result = r_group.standardize_values(var_value_example)
-        self.assertEqual(result[0].value, 'CCCCCCCC')
-

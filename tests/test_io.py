@@ -13,32 +13,33 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 
-log = logging.getLogger(__name__)
-
 import chemschematicresolver as csr
 import os
 from pathlib import Path
 import unittest
 
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-train_dir = os.path.join(os.path.dirname(tests_dir), 'train', 'train_imgs')
-sample_diag = os.path.join(train_dir, 'S014372081630122X_gr1.jpg')
+log = logging.getLogger(__name__)
+
+tests_dir = os.path.abspath(__file__)
+data_dir = os.path.join(os.path.dirname(tests_dir), 'data')
+sample_diag = os.path.join(data_dir, 'S014372081630122X_gr1.jpg')
+
 
 class TestImportAndSave(unittest.TestCase):
     """ Tests importing and saving of relevant image types."""
 
-    def test_import_png(self):
+    def test_import_jpg(self):
         """ Tests import of jpg file"""
 
         fig = csr.io.imread(sample_diag)
 
-        output_path = os.path.join(train_dir, 'test_import_and_save.jpg')
+        output_path = os.path.join(data_dir, 'test_import_and_save.jpg')
         csr.io.imsave(output_path,fig.img)
         f = Path(output_path)
-        isFile = f.is_file()
+        is_file = f.is_file()
         os.remove(output_path)
 
-        self.assertTrue(isFile)
+        self.assertTrue(is_file)
 
 
 

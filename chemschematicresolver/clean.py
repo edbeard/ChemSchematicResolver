@@ -68,5 +68,5 @@ def remove_diagram_numbers(diags, fig):
 def clean_output(text):
     """ Remove whitespace and newline characters from input text."""
 
-    text = text.replace(' ', '')
+    # text = text.replace(' ', '')
     return text.replace('\n', '')

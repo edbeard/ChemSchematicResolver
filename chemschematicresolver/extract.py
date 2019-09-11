@@ -191,10 +191,13 @@ def extract_diagram(filename, debug=False):
 
     # Re-cluster by height if there are more Diagram objects than Labels
     if len(labels) < len(diags):
-        labels, diags = classify_kmeans(panels, fig, skel=False)
-        labels, diags = preprocessing(labels, diags, fig)
+        labels_h, diags_h = classify_kmeans(panels, fig, skel=False)
+        labels_h, diags_h = preprocessing(labels_h, diags_h, fig)
 
-        #TODO: Add some logic here to choose the clustering that has the closet number of diagrams and labels?
+        # Choose the fitting with the closest number of diagrams and labels
+        if abs(len(labels_h) - len(diags_h)) < abs(len(labels) - len(diags)):
+            labels = labels_h
+            diags = diags_h
 
     if debug is True:
         # Create output image
@@ -230,10 +233,10 @@ def extract_diagram(filename, debug=False):
         diag.label = read_label(fig, label)
 
         # Add r-group variables if detected
-        diag = detect_r_group(diag, extension)
+        diag = detect_r_group(diag)
 
         # Get SMILES for output
-        smiles, r_smiles = get_smiles(diag, smiles, r_smiles)
+        smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
 
     log.info("The results are :")
     log.info('R-smiles %s' % r_smiles)

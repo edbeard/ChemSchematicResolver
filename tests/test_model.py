@@ -13,24 +13,13 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 
-log = logging.getLogger(__name__)
-
 import chemschematicresolver.model as mod
 import unittest
 
+log = logging.getLogger(__name__)
+
+
 class TestModel(unittest.TestCase):
-
-    def test_graph_kruskal(self):
-        g = mod.Graph(4)
-        g.addEdge(0, 1, 10)
-        g.addEdge(0, 2, 6)
-        g.addEdge(0, 3, 5)
-        g.addEdge(1, 3, 15)
-        g.addEdge(2, 3, 4)
-
-        result = g.kruskal()
-
-        self.assertEqual(result, [[2, 3, 4], [0, 3, 5], [0, 1, 10]])
 
     def test_separation(self):
         r1 = mod.Rect(-1, 1, -1, 1)
@@ -47,7 +36,5 @@ class TestModel(unittest.TestCase):
         tuple2 = (mod.Panel(5, 6, 7, 8, 0), mod.Panel(1, 2, 3, 4, 0))
 
         list1 = [tuple1, tuple2]
-        list2 = [tuple1, tuple2]
 
-        if tuple1 in list1:
-                print('foo')
+        self.assertTrue(tuple1 in list1)
