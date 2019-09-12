@@ -151,7 +151,7 @@ def preprocessing(labels, diags, fig):
     diags = remove_diag_pixel_islands(diags, fig)
 
     # Merge labels together that are sufficiently local
-    label_candidates_horizontally_merged = merge_label_horizontally(labels)
+    label_candidates_horizontally_merged = merge_label_horizontally(labels,fig)
     label_candidates_fully_merged = merge_labels_vertically(label_candidates_horizontally_merged)
     labels_converted = convert_panels_to_labels(label_candidates_fully_merged)
 
@@ -443,7 +443,7 @@ def order_by_area(panels):
     return panels
 
 
-def merge_label_horizontally(merge_candidates):
+def merge_label_horizontally(merge_candidates, fig):
     """ Iteratively attempt to merge horizontally
 
     :param merge_candidates: Input list of Panels to be merged
@@ -455,7 +455,7 @@ def merge_label_horizontally(merge_candidates):
     # Identifies panels within horizontal merging criteria
     while done is False:
         ordered_panels = order_by_area(merge_candidates)
-        merge_candidates, done = merge_loop_horizontal(ordered_panels)
+        merge_candidates, done = merge_loop_horizontal(ordered_panels, fig)
 
     merge_candidates, done = merge_all_overlaps(merge_candidates)
     return merge_candidates
@@ -476,7 +476,7 @@ def merge_labels_vertically(merge_candidates):
     return merge_candidates
 
 
-def merge_loop_horizontal(panels):
+def merge_loop_horizontal(panels, fig_input):
     """ Iteratively merges panels by relative proximity to each other along the x axis.
         This is repeated until no panels are merged by the algorithm
 
@@ -497,7 +497,7 @@ def merge_loop_horizontal(panels):
                 and abs(a.height - b.height) < min(a.height, b.height):
 
             # Check that the distance between the edges of panels is not too large
-            if (0 < a.left - b.right < (min(a.height, b.height) * 2)) or (0 < (b.left - a.right) < (min(a.height, b.height) * 2)):
+            if (0 <= a.left - b.right < (min(a.height, b.height) * 2)) or (0 <= (b.left - a.right) < (min(a.height, b.height) * 2)):
 
                 merged_rect = merge_rect(a, b)
                 merged_panel = Panel(merged_rect.left, merged_rect.right, merged_rect.top, merged_rect.bottom, 0)
@@ -508,7 +508,10 @@ def merge_loop_horizontal(panels):
     log.debug('Length of blacklisted : %s' % len(blacklisted_panels))
     log.debug('Length of output panels : %s' % len(output_panels))
 
-    output_panels = [panel for panel in panels if panel not in blacklisted_panels]
+    for panel in panels:
+        if panel not in blacklisted_panels:
+            output_panels.append(panel)
+
     output_panels = retag_panels(output_panels)
 
     return output_panels, done

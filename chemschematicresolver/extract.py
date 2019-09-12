@@ -211,10 +211,10 @@ def extract_diagram(filename, debug=False):
 
     # Calulate the area to (# of labels) ratio
     area_label_number_ratio = fig_bbox.perimeter / len(labelled_diags)
-    metric_threshold = 715.75
+    metric_threshold = 715.75  # Currently 85th percentile of initial evaluation set
 
     # Throw up warning if the resolution is too low
-    if area_label_number_ratio > metric_threshold:
+    if area_label_number_ratio < metric_threshold:
         log.error('The resolution of the diagram is too low for accurate extraction.')
         raise Exception('The resolution of the diagram is too low for accurate extraction.')
 
