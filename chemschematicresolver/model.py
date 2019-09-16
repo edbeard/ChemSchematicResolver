@@ -145,6 +145,7 @@ class Rect(object):
     def __hash__(self):
         return hash((self.left, self.right, self.top, self.bottom))
 
+
 class Panel(Rect):
     """ Tagged section inside Figure"""
 

@@ -47,44 +47,108 @@ def detect_r_group(diag):
     """
 
     sentences = diag.label.text
-    for sentence in sentences:
-        var_value_pairs = []  # Used to find variable - value pairs for extraction
 
-        for i, token in enumerate(sentence.tokens):
-            if token.text is '=':
-                log.info('Found R-Group descriptor %s' % token.text)
-                if i > 0:
-                    log.info('Variable candidate is %s' % sentence.tokens[i-1])
-                if i < len(sentence.tokens) - 1:
-                    log.info('Value candidate is %s' % sentence.tokens[i+1])
+    if sentences is []:
+        pass
+    # Identifies grid labels from the presence of a single 'R' in the first sentence
+    elif len(sentences) == 1 and len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') == 'R':
 
-                if 0 < i < len(sentence.tokens) - 1:
-                    variable = sentence.tokens[i - 1]
-                    value = sentence.tokens[i + 1]
-                    var_value_pairs.append(RGroup(variable, value, []))
-
-            elif token.text == 'or' and var_value_pairs:
-                log.info('"or" keyword detected. Assigning value to previous R-group variable...')
-
-                # Identify the most recent var_value pair
-                variable = var_value_pairs[-1].var
-                value = sentence.tokens[i + 1]
-                var_value_pairs.append(RGroup(variable, value, []))
-
-        # Process R-group values from '='
-        r_groups = get_label_candidates(sentence, var_value_pairs)
-        r_groups = standardize_values(r_groups)
-
-        # Resolving positional labels where possible for 'or' cases
-        r_groups = filter_repeated_labels(r_groups)
-
-        # Separate duplicate variables into separate lists
+        r_groups = resolve_r_group_grid(sentences)
         r_groups_list = separate_duplicate_r_groups(r_groups)
-
         for r_groups in r_groups_list:
             diag.label.add_r_group_variables(convert_r_groups_to_tuples(r_groups))
 
+    # Otherwise looks for indicative R-Group characters (=, :)
+    else:
+
+        r_groups_list = []
+        for sentence in sentences:
+
+            all_sentence_text = [token.text for token in sentence.tokens]
+
+            if '=' in all_sentence_text:
+                var_value_pairs = detect_r_group_from_sentence(sentence, indicator='=')
+            elif ':' in all_sentence_text:
+                var_value_pairs = detect_r_group_from_sentence(sentence, indicator=':')
+            else:
+                var_value_pairs = []
+
+            # Process R-group values from '='
+            r_groups = get_label_candidates(sentence, var_value_pairs)
+            r_groups = standardize_values(r_groups)
+
+            # Resolving positional labels where possible for 'or' cases
+            r_groups = filter_repeated_labels(r_groups)
+
+            # Separate duplicate variables into separate lists
+            r_groups_list = separate_duplicate_r_groups(r_groups)
+
+            for r_groups in r_groups_list:
+                diag.label.add_r_group_variables(convert_r_groups_to_tuples(r_groups))
+
     return diag
+
+
+def detect_r_group_from_sentence(sentence, indicator='='):
+    """ Detects an R-Group from the presence of an input character
+
+     :param sentence: A chemdataextractor.doc.text.Sentence object containing tokens to be probed for R-Groups
+     :param indicator: String used to identify R-Groups
+
+     :return var_value_pairs: A list of RGroup objects, containing the variable, value and label candidates
+     :rtype: List[chemschematicresolver.model.RGroup]
+     """
+
+    var_value_pairs = []  # Used to find variable - value pairs for extraction
+
+    for i, token in enumerate(sentence.tokens):
+        if token.text is indicator:
+            log.info('Found R-Group descriptor %s' % token.text)
+            if i > 0:
+                log.info('Variable candidate is %s' % sentence.tokens[i - 1])
+            if i < len(sentence.tokens) - 1:
+                log.info('Value candidate is %s' % sentence.tokens[i + 1])
+
+            if 0 < i < len(sentence.tokens) - 1:
+                variable = sentence.tokens[i - 1]
+                value = sentence.tokens[i + 1]
+                var_value_pairs.append(RGroup(variable, value, []))
+
+        elif token.text == 'or' and var_value_pairs:
+            log.info('"or" keyword detected. Assigning value to previous R-group variable...')
+
+            # Identify the most recent var_value pair
+            variable = var_value_pairs[-1].var
+            value = sentence.tokens[i + 1]
+            var_value_pairs.append(RGroup(variable, value, []))
+
+    return var_value_pairs
+
+
+def resolve_r_group_grid(sentences):
+    """Resolves the special grid case, where data is organised into label-value columns for a specific variable.
+
+        Please note that this only extracts simple tables, where the column indicator must be 'R' and the last token in
+        each subsequent sentence is assumed to be the value.
+
+    :param sentences: A chemdataextractor.doc.text.Sentence objects containing tokens to be probed for R-Groups
+    :return var_value_pairs: A list of RGroup objects, containing the variable, value and label candidates
+    :rtype: List[chemschematicresolver.model.RGroup]
+    """
+
+    var_value_pairs = []  # Used to find variable - value pairs for extraction
+    table_identifier, table_rows = sentences[0], sentences[1:]
+    log.info('R-Group table format detected. Variable candidate is R')
+
+    variable = table_identifier.tokens[0]
+    for row in table_rows:
+        tokens = row.tokens
+        value = tokens[-1]
+        label_candidates = [cand for cand in tokens[:-1]]
+
+        var_value_pairs.append(RGroup(variable, value, label_candidates))
+
+    return var_value_pairs
 
 
 def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, blacklist_words=['or']):
@@ -109,13 +173,45 @@ def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bl
 
     candidates = [token for token in candidates if token not in r_group_vars_and_values]
 
-    for r_group in r_groups:
-        var = r_group.var
-        value = r_group.value
-        label_cands = [candidate for candidate in candidates if candidate not in [var, value]]
-        r_group.label_candidates = label_cands
+    r_groups = assign_label_candidates(r_groups, candidates)
 
     return r_groups
+
+
+def assign_label_candidates(r_groups, candidates):
+    """ Gets label candidates for cases where the same variable appears twice in one setence"""
+
+    # Check - are there repeated variables?
+    var_text = [r_group.var.text for r_group in r_groups]
+    duplicate_r_groups = [r_group for r_group in r_groups if var_text.count(r_group.var.text) > 1]
+
+    # Check that ALL r_group values have this duplicity (ie has every r_group got a duplicate variable?)
+    if len(duplicate_r_groups) == len(r_groups) and len(r_groups) != 0:
+
+        # Now go through r_groups getting positions of tokens
+        for i, r_group in enumerate(r_groups):
+            if i == 0:
+                end_index = r_group.var.end
+                r_group.label_candidates = [cand for cand in candidates if cand.start < end_index]
+            elif i == len(r_groups) - 1:
+                start_index = r_groups[i - 1].value.end
+                end_index = r_group.var.end
+                r_group.label_candidates = [cand for cand in candidates if (start_index< cand.start < end_index) or cand.start > r_group.value.end]
+            else:
+                start_index = r_groups[i - 1].value.end
+                end_index = r_group.var.end
+                r_group.label_candidates = [cand for cand in candidates if start_index< cand.start < end_index]
+
+        return r_groups
+
+    else:
+        for r_group in r_groups:
+            var = r_group.var
+            value = r_group.value
+            label_cands = [candidate for candidate in candidates if candidate not in [var, value]]
+            r_group.label_candidates = label_cands
+
+        return r_groups
 
 
 def filter_repeated_labels(r_groups):
@@ -288,15 +384,21 @@ def separate_duplicate_r_groups(r_groups):
     if len(r_groups) is 0:
         return r_groups
 
+    # Getting only the variables with unique text value
     vars = [r_group.var for r_group in r_groups]
-    unique_vars = list(set(vars))
+    vars_text = [var.text for var in vars]
+    unique_vars, unique_vars_text = [], []
+    for i, var in enumerate(vars):
+        if vars_text[i] not in unique_vars_text:
+            unique_vars.append(var)
+            unique_vars_text.append(vars_text[i])
 
     var_quantity_tuples = []
     vars_dict = {}
     output = []
 
     for var in unique_vars:
-        var_quantity_tuples.append((var, vars.count(var)))
+        var_quantity_tuples.append((var, vars_text.count(var.text)))
         vars_dict[var.text] = []
 
     equal_length = all(elem[1] == var_quantity_tuples[0][1] for elem in var_quantity_tuples)
@@ -308,7 +410,7 @@ def separate_duplicate_r_groups(r_groups):
     # Populate dictionary for each unique variable
     for var in unique_vars:
         for r_group in r_groups:
-            if var == r_group.var:
+            if var.text == r_group.var.text:
                 vars_dict[var.text].append(r_group)
 
     for i in range(len(vars_dict[var.text])):
@@ -321,7 +423,14 @@ def separate_duplicate_r_groups(r_groups):
                 log.error(e)
         output.append(temp)
 
+    # Ensure that each complete set contains all label candidates
+    for r_groups_output in output:
+        total_cands = []
+        for r_group in r_groups_output:
+            for cand in r_group.label_candidates:
+                total_cands.append(cand)
+
+        for r_group in r_groups_output:
+            r_group.label_candidates = total_cands
+
     return output
-
-
-
