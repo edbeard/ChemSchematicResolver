@@ -32,5 +32,9 @@ def is_false_positive(label_smile_tuple):
     if '*' in smile:
         return True
 
+    # Remove results where no SMILE was returned
+    if smile == '':
+        return True
+
     return False
 

@@ -107,17 +107,6 @@ class ChemSchematicResolverTokeniser(WordTokenizer):
         '}',
         ']',
         ')',
-        # Slashes
-        '/',  # \u002f Solidus
-        '⁄',  # \u2044 Fraction slash
-        '∕',  # \u2215 Division slash
-        # Hyphens and Minuses
-        # '-',  # \u002d Hyphen-minus
-        '−',  # \u2212 Minus
-        '‒',  # \u2012 figure dash
-        # '‐',  # \u2010 Hyphen
-        # '‐',  # \u2010 Hyphen
-        # '‑',  # \u2011 Non-breaking hyphen
         '+',  # \u002b Plus
         '±',  # \u00b1 Plus/Minus
     ]

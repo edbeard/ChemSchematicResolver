@@ -48,10 +48,10 @@ def detect_r_group(diag):
 
     sentences = diag.label.text
 
-    if sentences is []:
+    if sentences == []:
         pass
     # Identifies grid labels from the presence of a single 'R' in the first sentence
-    elif len(sentences) == 1 and len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') == 'R':
+    elif len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') == 'R':
 
         r_groups = resolve_r_group_grid(sentences)
         r_groups_list = separate_duplicate_r_groups(r_groups)
