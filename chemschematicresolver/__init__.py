@@ -24,5 +24,4 @@ __copyright__ = 'Copyright 2019 Ed Beard, All rights reserved.'
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-
-from . import extract
+from .extract import extract_diagram, extract_document

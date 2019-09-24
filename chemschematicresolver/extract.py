@@ -27,6 +27,7 @@ from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 import os
 import urllib
+import math
 import cirpy
 
 from chemdataextractor import Document
@@ -173,6 +174,9 @@ def extract_diagram(filename, debug=False):
 
     extension = filename.split('.')[-1]
 
+    # Confidence threshold for OCR results
+    confidence_threshold = 73.7620468139648
+
     # Read in float and raw pixel images
     fig = imread(filename)
     fig_bbox = fig.get_bounding_box()
@@ -209,16 +213,6 @@ def extract_diagram(filename, debug=False):
     # Add label information to the appropriate diagram by expanding bounding box
     labelled_diags = label_diags(labels, diags, fig_bbox)
 
-    # Calulate the area to (# of labels) ratio
-    area_label_number_ratio = fig_bbox.perimeter / len(labelled_diags)
-    metric_threshold = 715.75  # Currently 85th percentile of initial evaluation set
-
-    # Throw up warning if the resolution is too low
-    if area_label_number_ratio < metric_threshold:
-        log.error('The resolution of the diagram is too low for accurate extraction.')
-        print('The resolution of the diagram is too low for accurate extraction.')
-        raise Exception('The resolution of the diagram is too low for accurate extraction.')
-
     for diag in labelled_diags:
 
         label = diag.label
@@ -240,13 +234,20 @@ def extract_diagram(filename, debug=False):
             ax.add_patch(label_rect)
 
         # Read the label
-        diag.label = read_label(fig, label)
+        diag.label, conf = read_label(fig, label)
 
-        # Add r-group variables if detected
-        diag = detect_r_group(diag)
+        # Only extract images where the confidence is sufficiently high
+        if not math.isnan(conf) and conf > confidence_threshold:
 
-        # Get SMILES for output
-        smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
+            # Add r-group variables if detected
+            diag = detect_r_group(diag)
+
+            # Get SMILES for output
+            smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
+
+        else:
+            log.info('Confidence in label deemed too low for accurate extraction')
+            print('Confidence in label deemed too low for accurate extraction')
 
     log.info("The results are :")
     log.info('R-smiles %s' % r_smiles)

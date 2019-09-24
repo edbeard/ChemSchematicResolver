@@ -32,7 +32,7 @@ def find_repeating_unit(labels, diags, fig):
     for diag in diags:
         for cand in labels:
             if diag.overlaps(cand):
-                repeating_units = [token for sentence in read_label(fig, cand).text for token in sentence.tokens if 'n' is token.text]
+                repeating_units = [token for sentence in read_label(fig, cand)[0].text for token in sentence.tokens if 'n' is token.text]
                 if repeating_units:
                     ns.append(cand)
                     diag.repeating = True

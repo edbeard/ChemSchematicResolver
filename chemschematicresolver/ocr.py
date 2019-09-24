@@ -77,7 +77,13 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     else:
         tagged_sentences = []
     label.text = tagged_sentences
-    return label
+
+    # Calculating average confidence for the block
+    confidences = [t.confidence for t in text]
+    avg_conf = np.mean(confidences)
+    print('Confidence in OCR: %s' % avg_conf)
+
+    return label, avg_conf
 
 
 # These enums just wrap tesserocr functionality, so we can return proper enum members instead of ints.
@@ -226,7 +232,6 @@ def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=Non
     )
 
     # Add a buffer around the entire input image to ensure no text is too close to edges
-    # TODO: Ensure the resulting bounding boxes never go beyond bounds
     img_padding = 3
     if img.ndim == 3:
         npad = ((img_padding, img_padding), (img_padding, img_padding), (0, 0))
