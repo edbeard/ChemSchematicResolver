@@ -58,6 +58,7 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
     fig_paths = download_figs(csds, output)
     log.info("All relevant figures from %s downloaded sucessfully" % filename)
 
+    # Run CSD if necessary
     if do_extract:
         # Run CSR
         results = []
@@ -68,17 +69,15 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
                 pass
 
         # Substitute smiles for labels
-        substitute_labels(doc.records.serialize(), results)
+        combined_results = substitute_labels(doc.records.serialize(), results)
 
-        return results
+        return combined_results
 
 
 def substitute_labels(records, results):
     """ Looks for label candidates in the document records and substitutes where appropriate"""
 
-    # TODO : make it so this substitutes in the CDE records with new field smiles: ['diagram': ''] or something...
-
-    doc_named_records = []
+    docs_labelled_records = []
 
     record_labels = [record for record in records if 'labels' in record.keys()]
 
@@ -87,24 +86,21 @@ def substitute_labels(records, results):
         for label_cands, smile in diag_result:
             for record_label in record_labels:
                 overlap = [(record_label, label_cand, smile)  for label_cand in label_cands if label_cand in record_label['labels']]
-                doc_named_records += overlap
+                docs_labelled_records += overlap
 
-    log.debug(doc_named_records)
+    log.debug(docs_labelled_records)
 
-    for doc_record, diag_label, diag_smile in doc_named_records:
-        for name in (doc_record['names']):
-            try:
-                doc_smile = cirpy.resolve(chem_normalize(name).encode('utf-8'), 'smiles')
-            except:
-                pass
-            log.debug('Doc smile: %s ' % doc_smile)
-            log.debug('Diag smile: %s \n' % diag_smile)
-
+    # Adding data to the serialized ChemDataExtractor output
+    for doc_record, diag_label, diag_smile in docs_labelled_records:
+        for record in records:
+            if record == doc_record:
+                record['diagram'] = {'smile': diag_smile, 'label': diag_label}
+    return records
 
 def download_figs(figs, output):
     """ Downloads figures from url
 
-    :param figs: List of tuples in form figure metadat (Filename, figure id, url to figure, caption)
+    :param figs: List of tuples in form figure metadata (Filename, figure id, url to figure, caption)
     :param output: Location of output images
     """
 
@@ -146,11 +142,11 @@ def find_image_candidates(figs, filename):
         records = fig.records
         caption = fig.caption
         for record in records:
-            if detected is True:
+            if detected:
                 break
 
             rec = record.serialize()
-            if ['csd'] in rec.values():
+            if 'figure' in rec.keys():
                 detected = True
                 log.info('Chemical schematic diagram instance found!')
                 csd_imgs.append((filename, fig.id, fig.url, caption.text.replace('\n', ' ')))
@@ -269,7 +265,7 @@ def extract_diagram(filename, debug=False):
 
 
 def get_smiles(diag, smiles, r_smiles, extension='jpg'):
-    """ Identifies diagrams containing R-group.
+    """ Extracts diagram information.
 
     :param diag: Input Diagram
     :param smiles: List of smiles from all diagrams up to 'diag'

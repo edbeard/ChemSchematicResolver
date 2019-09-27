@@ -51,7 +51,7 @@ def detect_r_group(diag):
     if sentences == []:
         pass
     # Identifies grid labels from the presence of a single 'R' in the first sentence
-    elif len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') == 'R':
+    elif len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') in ['R', 'X']:
 
         r_groups = resolve_r_group_grid(sentences)
         r_groups_list = separate_duplicate_r_groups(r_groups)
@@ -61,7 +61,6 @@ def detect_r_group(diag):
     # Otherwise looks for indicative R-Group characters (=, :)
     else:
 
-        r_groups_list = []
         for sentence in sentences:
 
             all_sentence_text = [token.text for token in sentence.tokens]
@@ -128,7 +127,7 @@ def detect_r_group_from_sentence(sentence, indicator='='):
 def resolve_r_group_grid(sentences):
     """Resolves the special grid case, where data is organised into label-value columns for a specific variable.
 
-        Please note that this only extracts simple tables, where the column indicator must be 'R' and the last token in
+        Please note that this only extracts simple tables, where the column indicator must be 'R' or 'X' and the last token in
         each subsequent sentence is assumed to be the value.
 
     :param sentences: A chemdataextractor.doc.text.Sentence objects containing tokens to be probed for R-Groups
@@ -138,9 +137,9 @@ def resolve_r_group_grid(sentences):
 
     var_value_pairs = []  # Used to find variable - value pairs for extraction
     table_identifier, table_rows = sentences[0], sentences[1:]
-    log.info('R-Group table format detected. Variable candidate is R')
 
     variable = table_identifier.tokens[0]
+    log.info('R-Group table format detected. Variable candidate is %s' % variable)
     for row in table_rows:
         tokens = row.tokens
         value = tokens[-1]
@@ -179,7 +178,9 @@ def get_label_candidates(sentence, r_groups, blacklist_chars=BLACKLIST_CHARS, bl
 
 
 def assign_label_candidates(r_groups, candidates):
-    """ Gets label candidates for cases where the same variable appears twice in one setence"""
+    """ Gets label candidates for cases where the same variable appears twice in one sentence.
+        This is typically indicative of cases where 2 R-Groups are defined on the same line
+    """
 
     # Check - are there repeated variables?
     var_text = [r_group.var.text for r_group in r_groups]
