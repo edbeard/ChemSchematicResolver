@@ -244,7 +244,6 @@ class Diagram(Panel):
             return '<%s (%s, %s)' % (self.__class__.__name__, self.tag, self.smile)
 
 
-
 class Label(Panel):
     """ Label used as an identifier for the closest Chemical Schematic Diagram"""
 
@@ -265,7 +264,7 @@ class Label(Panel):
         """ List of lists of tuples containing variable-value-label triplets.
             Each list represents a particular combination of chemicals yielding a unique compound.
 
-            :param : List(str,str,List(str)) : A list of variable-value pairs and their list ofcandidate labels
+            :param : List(str,str,List(str)) : A list of variable-value pairs and their list of candidate labels
         """
         return self.r_group
 
@@ -295,7 +294,7 @@ class RGroup(object):
         )
 
     def convert_to_tuple(self):
-        """ Converts the r-group object to a usable a list of variable-value pairs and their list ofcandidate labels """
+        """ Converts the r-group object to a usable a list of variable-value pairs and their list of candidate labels """
         tuple_r_group = (self.var, self.value, self.label_candidates)
         return tuple_r_group
 

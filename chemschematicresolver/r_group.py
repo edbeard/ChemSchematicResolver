@@ -38,6 +38,10 @@ BLACKLIST_CHARS = ASSIGNMENT + SEPERATORS + CONCENTRATION
 NUMERIC_REGEX = re.compile('^\d{1,3}$')
 ALPHANUMERIC_REGEX = re.compile('^((d-)?(\d{1,2}[A-Za-z]{1,2}[′″‴‶‷⁗]?)(-d))|(\d{1,3})?$')
 
+# Commonly occuring tokens for R-Groups:
+r_group_indicators = ['R', 'X', 'Y', 'Z', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'Y2', 'D', "R'", "R''", "R'''", "R''''"]
+r_group_indicators = r_group_indicators + [val.lower() for val in r_group_indicators]
+
 
 def detect_r_group(diag):
     """ Determines whether a label represents an R-Group structure, and if so gives the variable and value.
@@ -47,11 +51,12 @@ def detect_r_group(diag):
     """
 
     sentences = diag.label.text
+    first_sentence_tokens = [sentence.tokens[0].text.replace(' ', '').replace('\n', '') for sentence in sentences]
 
     if sentences == []:
         pass
-    # Identifies grid labels from the presence of a single 'R' in the first sentence
-    elif len(sentences[0].tokens) == 1 and sentences[0].tokens[0].text.replace(' ', '').replace('\n', '') in ['R', 'X']:
+    # # Identifies grid labels from the presence of only variable tokens in the first line
+    elif all([True for token in first_sentence_tokens if token in r_group_indicators]):
 
         r_groups = resolve_r_group_grid(sentences)
         r_groups_list = separate_duplicate_r_groups(r_groups)
@@ -127,8 +132,8 @@ def detect_r_group_from_sentence(sentence, indicator='='):
 def resolve_r_group_grid(sentences):
     """Resolves the special grid case, where data is organised into label-value columns for a specific variable.
 
-        Please note that this only extracts simple tables, where the column indicator must be 'R' or 'X' and the last token in
-        each subsequent sentence is assumed to be the value.
+        Please note that this only extracts simple tables, where the column indicators are contained in the list of
+        r_group_indicators
 
     :param sentences: A chemdataextractor.doc.text.Sentence objects containing tokens to be probed for R-Groups
     :return var_value_pairs: A list of RGroup objects, containing the variable, value and label candidates
@@ -138,14 +143,20 @@ def resolve_r_group_grid(sentences):
     var_value_pairs = []  # Used to find variable - value pairs for extraction
     table_identifier, table_rows = sentences[0], sentences[1:]
 
-    variable = table_identifier.tokens[0]
-    log.info('R-Group table format detected. Variable candidate is %s' % variable)
+    variables = table_identifier.tokens
+    log.info('R-Group table format detected. Variable candidates are %s' % variables)
+
+    # Check that the length of all table rows is the same as the table_identifier + 1
+    correct_row_lengths = [True for row in table_rows if len(row.tokens) == len(variables) + 1]
+    if not all(correct_row_lengths):
+        return []
+
     for row in table_rows:
         tokens = row.tokens
-        value = tokens[-1]
-        label_candidates = [cand for cand in tokens[:-1]]
-
-        var_value_pairs.append(RGroup(variable, value, label_candidates))
+        label_candidates = [tokens[0]]
+        values = tokens[1:]
+        for i, value in enumerate(values):
+            var_value_pairs.append(RGroup(variables[i], value, label_candidates))
 
     return var_value_pairs
 

@@ -8,6 +8,8 @@ Test R-group resolution operations.
 """
 
 from chemschematicresolver import r_group
+from chemschematicresolver.model import RGroup
+
 from chemdataextractor.doc.text import Sentence, Token, ChemSentenceTokenizer, ChemWordTokenizer, ChemLexicon, ChemAbbreviationDetector, ChemCrfPosTagger, CemTagger
 
 import unittest
@@ -74,5 +76,49 @@ class TestRgroup(unittest.TestCase):
         for r_groups in r_groups_list:
             output.append(r_group.convert_r_groups_to_tuples(r_groups))
 
-        print(output)
+    def test_r_group_simple_table(self):
+
+        # Define a simple table structure
+        table = [Sentence('R'), Sentence('1a CH3'), Sentence('1b Me')]
+
+        output = r_group.resolve_r_group_grid(table)
+        var, value, labels = output[0].convert_to_tuple()
+        var2, value2, labels2 = output[1].convert_to_tuple()
+        # tuple_output = [ (var.text, value.text, labels.text) for var, value, labels in output[0].convert_to_tuple()]
+        self.assertEqual(var.text, 'R')
+        self.assertEqual(value.text, 'CH3')
+        self.assertEqual(labels[0].text, '1a')
+        self.assertEqual(var2.text, 'R')
+        self.assertEqual(value2.text, 'Me')
+        self.assertEqual(labels2[0].text, '1b')
+
+    def test_r_group_table(self):
+
+        # Define a simple table structure
+        table = [Sentence('R1 R2'), Sentence('1a CH3 C'), Sentence('1b Me Br')]
+
+        output = r_group.resolve_r_group_grid(table)
+        r_groups_list = r_group.separate_duplicate_r_groups(output)
+
+        # Test the first r_group pair
+        var1, value1, labels1 = r_groups_list[0][0].convert_to_tuple()
+        var2, value2, labels2 = r_groups_list[0][1].convert_to_tuple()
+
+        self.assertEqual(var1.text, 'R1')
+        self.assertEqual(value1.text, 'CH3')
+        self.assertEqual(labels1[0].text, '1a')
+        self.assertEqual(var2.text, 'R2')
+        self.assertEqual(value2.text, 'C')
+        self.assertEqual(labels2[0].text, '1a')
+
+        # Test the second r_group pair
+        var1, value1, labels1 = r_groups_list[1][0].convert_to_tuple()
+        var2, value2, labels2 = r_groups_list[1][1].convert_to_tuple()
+
+        self.assertEqual(var1.text, 'R1')
+        self.assertEqual(value1.text, 'Me')
+        self.assertEqual(labels1[0].text, '1b')
+        self.assertEqual(var2.text, 'R2')
+        self.assertEqual(value2.text, 'Br')
+        self.assertEqual(labels2[0].text, '1b')
 
