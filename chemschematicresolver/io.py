@@ -26,6 +26,7 @@ from skimage import img_as_float, img_as_ubyte, img_as_uint
 from skimage import io as skio
 from skimage.color import gray2rgb
 import os
+import csv
 
 from .model import Figure
 
@@ -71,6 +72,25 @@ def imdel(f):
     """
 
     os.remove(f)
+
+
+def write_to_superatom(sub_smile, superatom_path):
+    """
+    Adds a smile string to the superatom.txt file, for resolution in pyosra
+    :param sub_smile: The smile string to be added to the file
+    :param: superatom_path: The path to the file containng superatom info
+    """
+
+    with open(superatom_path, 'r') as inf:
+        cleaned_lines = [' '.join(line.split()) for line in inf if not line.startswith('#')]
+        cleaned_lines = [line for line in cleaned_lines if len(line) != 0]
+        lines = [(line.split(' ')[0], line.split(' ')[1]) for line in cleaned_lines]
+
+    if (sub_smile, sub_smile) not in lines:
+        lines.append((sub_smile, sub_smile))
+        with open(superatom_path, 'w') as outf:
+            csvwriter = csv.writer(outf, delimiter=' ')
+            csvwriter.writerows(lines)
 
 
 def img_as_pil(arr, format_str=None):

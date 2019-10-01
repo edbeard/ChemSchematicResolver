@@ -19,6 +19,7 @@ import logging
 import osra_rgroup
 import cirpy
 import itertools
+import os
 
 from . import io
 from . import actions
@@ -42,6 +43,10 @@ ALPHANUMERIC_REGEX = re.compile('^((d-)?(\d{1,2}[A-Za-z]{1,2}[′″‴‶‷⁗
 r_group_indicators = ['R', 'X', 'Y', 'Z', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8', 'R9', 'R10', 'Y2', 'D', "R'", "R''", "R'''", "R''''"]
 r_group_indicators = r_group_indicators + [val.lower() for val in r_group_indicators]
 
+# Standard path to superatom dictionary file
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+superatom_file = os.path.join(parent_dir, 'dict', 'superatom.txt')
+
 
 def detect_r_group(diag):
     """ Determines whether a label represents an R-Group structure, and if so gives the variable and value.
@@ -51,12 +56,12 @@ def detect_r_group(diag):
     """
 
     sentences = diag.label.text
-    first_sentence_tokens = [sentence.tokens[0].text.replace(' ', '').replace('\n', '') for sentence in sentences]
+    first_sentence_tokens = [token.text.replace(' ', '').replace('\n', '') for token in sentences[0].tokens]
 
     if sentences == []:
         pass
     # # Identifies grid labels from the presence of only variable tokens in the first line
-    elif all([True for token in first_sentence_tokens if token in r_group_indicators]):
+    elif all([True if token in r_group_indicators else False for token in first_sentence_tokens]):
 
         r_groups = resolve_r_group_grid(sentences)
         r_groups_list = separate_duplicate_r_groups(r_groups)
@@ -282,7 +287,7 @@ def filter_repeated_labels(r_groups):
     return output_r_groups
 
 
-def get_rgroup_smiles(diag, extension='jpg', debug=True):
+def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superatom_file):
     """ Extract SMILES from a chemical diagram (powered by pyosra)
 
     :param diag: Input Diagram
@@ -317,10 +322,8 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True):
         osra_input.append(token_dict)
         label_cands.append(tokens[0][2])
 
-    # TODO : Attempt to resolve compound values using cirpy / OPSIN
-
     # Run osra on temp image
-    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True)
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True, superatom_file=superatom_path)
 
     if not debug:
         io.imdel(img_name)
@@ -361,7 +364,7 @@ def convert_r_groups_to_tuples(r_groups):
     return [r_group.convert_to_tuple() for r_group in r_groups]
 
 
-def standardize_values(r_groups):
+def standardize_values(r_groups, superatom_path=superatom_file):
     """ Converts values to a format compatible with diagram extraction"""
 
     # List of tuples pairing multiple definitions to the appropriate SMILES string
@@ -374,13 +377,27 @@ def standardize_values(r_groups):
               ('C7H', ['heptyl']),
               ('C8H', ['octyl']),
               ('C9H', ['nonyl']),
-              ('C10H', ['decyl'])]
+              ('C1OH', ['decyl'])]
 
     for r_group in r_groups:
+        # Convert 0's in value field to O
+        r_group.value = Token(r_group.value.text.replace('0', 'O'), r_group.value.start, r_group.value.end, r_group.value.lexicon)
+
+        if len(r_group.value.text) >= 4:
+            sub_smile = resolve_structure(r_group.value.text)
+            if sub_smile is not None:
+                # Add the smile to the superatom.txt dictionary for resolution in pyosra
+                io.write_to_superatom(sub_smile, superatom_path)
+
+                r_group.value = Token(sub_smile, r_group.value.start, r_group.value.end, r_group.value.lexicon)
+
+        # Resolve commone alkyls
         value = r_group.value.text
         for alkyl in alkyls:
             if value.lower() in alkyl[1]:
                 r_group.value = Token(alkyl[0], r_group.value.start, r_group.value.end, r_group.value.lexicon)
+
+    # Resolve more complex chemical names for values
 
     return r_groups
 
