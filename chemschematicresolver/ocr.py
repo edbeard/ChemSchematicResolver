@@ -81,7 +81,7 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     # Calculating average confidence for the block
     confidences = [t.confidence for t in text]
     avg_conf = np.mean(confidences)
-    print('Confidence in OCR: %s' % avg_conf)
+    log.info('Confidence in OCR: %s' % avg_conf)
 
     return label, avg_conf
 

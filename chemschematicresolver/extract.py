@@ -242,8 +242,8 @@ def extract_diagram(filename, debug=False):
             smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
 
         else:
-            log.info('Confidence in label deemed too low for accurate extraction')
-            print('Confidence in label deemed too low for accurate extraction')
+            log.warning('Confidence in label deemed too low for accurate extraction')
+            print('Confidence in label deemed too low for accurate extraction...')
 
     log.info("The results are :")
     log.info('R-smiles %s' % r_smiles)
