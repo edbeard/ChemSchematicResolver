@@ -44,7 +44,7 @@ r_group_indicators = ['R', 'X', 'Y', 'Z', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R
 r_group_indicators = r_group_indicators + [val.lower() for val in r_group_indicators]
 
 # Standard path to superatom dictionary file
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+parent_dir = os.path.dirname(os.path.abspath(__file__))
 superatom_file = os.path.join(parent_dir, 'dict', 'superatom.txt')
 
 

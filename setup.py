@@ -16,7 +16,7 @@ setup(
     author='Edward Beard',
     author_email='ejb207@cam.ac.uk',
     license='MIT',
-    url='https://github.com/edbeard/csr',
+    url='https://github.com/edbeard/ChemSchematicResolver',
     packages=find_packages(),
     description='A toolkit for resolving chemical SMILES from structural diagrams.',
     long_description=long_description,
@@ -24,7 +24,7 @@ setup(
     zip_safe=False,
     include_package_data=True,
     package_data={
-        '': ['*.txt', '*.png', '*rtf', 'srcnn/*.h5'],
+        '': ['dict/*txt'],
     },
     tests_require=['pytest'],
     install_requires=[
