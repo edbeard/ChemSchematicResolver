@@ -74,6 +74,21 @@ def imdel(f):
     os.remove(f)
 
 
+def read_superatom(superatom_path):
+    """
+    Reads the superatom file as a list of tuples
+    :param superatom_path: The path to the file containng superatom info
+    :return: list of abbreviation-smile tuples for superatoms
+    """
+
+    with open(superatom_path, 'r') as inf:
+        cleaned_lines = [' '.join(line.split()) for line in inf if not line.startswith('#')]
+        cleaned_lines = [line for line in cleaned_lines if len(line) != 0]
+        lines = [(line.split(' ')[0], line.split(' ')[1]) for line in cleaned_lines]
+
+    return lines
+
+
 def write_to_superatom(sub_smile, superatom_path):
     """
     Adds a smile string to the superatom.txt file, for resolution in pyosra
@@ -81,10 +96,7 @@ def write_to_superatom(sub_smile, superatom_path):
     :param: superatom_path: The path to the file containng superatom info
     """
 
-    with open(superatom_path, 'r') as inf:
-        cleaned_lines = [' '.join(line.split()) for line in inf if not line.startswith('#')]
-        cleaned_lines = [line for line in cleaned_lines if len(line) != 0]
-        lines = [(line.split(' ')[0], line.split(' ')[1]) for line in cleaned_lines]
+    lines = read_superatom(superatom_path)
 
     if (sub_smile, sub_smile) not in lines:
         lines.append((sub_smile, sub_smile))

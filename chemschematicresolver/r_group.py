@@ -46,6 +46,7 @@ r_group_indicators = r_group_indicators + [val.lower() for val in r_group_indica
 # Standard path to superatom dictionary file
 parent_dir = os.path.dirname(os.path.abspath(__file__))
 superatom_file = os.path.join(parent_dir, 'dict', 'superatom.txt')
+spelling_file = os.path.join(parent_dir, 'dict', 'spelling.txt')
 
 
 def detect_r_group(diag):
@@ -287,7 +288,7 @@ def filter_repeated_labels(r_groups):
     return output_r_groups
 
 
-def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superatom_file):
+def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superatom_file, spelling_path=spelling_file):
     """ Extract SMILES from a chemical diagram (powered by pyosra)
 
     :param diag: Input Diagram
@@ -323,7 +324,7 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superato
         label_cands.append(tokens[0][2])
 
     # Run osra on temp image
-    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True, superatom_file=superatom_path)
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True, superatom_file=superatom_path, spelling_file=spelling_path)
 
     if not debug:
         io.imdel(img_name)
@@ -383,21 +384,21 @@ def standardize_values(r_groups, superatom_path=superatom_file):
         # Convert 0's in value field to O
         r_group.value = Token(r_group.value.text.replace('0', 'O'), r_group.value.start, r_group.value.end, r_group.value.lexicon)
 
-        if len(r_group.value.text) >= 4:
+        # Check if r_group value is in the superatom file
+        exisiting_abbreviations = [line[0] for line in io.read_superatom(superatom_path)]
+        if r_group.value.text not in exisiting_abbreviations:
             sub_smile = resolve_structure(r_group.value.text)
+
             if sub_smile is not None:
                 # Add the smile to the superatom.txt dictionary for resolution in pyosra
                 io.write_to_superatom(sub_smile, superatom_path)
-
                 r_group.value = Token(sub_smile, r_group.value.start, r_group.value.end, r_group.value.lexicon)
 
         # Resolve commone alkyls
-        value = r_group.value.text
-        for alkyl in alkyls:
-            if value.lower() in alkyl[1]:
-                r_group.value = Token(alkyl[0], r_group.value.start, r_group.value.end, r_group.value.lexicon)
-
-    # Resolve more complex chemical names for values
+        # value = r_group.value.text
+        # for alkyl in alkyls:
+        #     if value.lower() in alkyl[1]:
+        #         r_group.value = Token(alkyl[0], r_group.value.start, r_group.value.end, r_group.value.lexicon)
 
     return r_groups
 

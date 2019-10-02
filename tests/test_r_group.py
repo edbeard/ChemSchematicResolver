@@ -122,3 +122,34 @@ class TestRgroup(unittest.TestCase):
         self.assertEqual(value2.text, 'Br')
         self.assertEqual(labels2[0].text, '1b')
 
+    def test_r_group_assignment(self):
+        """
+        Test assignment of multiple lines
+        """
+
+        sentences = [Sentence('R1 = R2 = H'), Sentence('R1 = R2 = Ac')]
+        out = []
+        for sentence in sentences:
+            r_groups = r_group.detect_r_group_from_sentence(sentence, indicator='=')
+            r_groups = r_group.standardize_values(r_groups)
+
+            # Resolving positional labels where possible for 'or' cases
+            r_groups = r_group.filter_repeated_labels(r_groups)
+
+            # Separate duplicate variables into separate lists
+            r_groups_list = r_group.separate_duplicate_r_groups(r_groups)
+
+            out.append(r_groups_list)
+
+        self.assertEqual(out[0][0][0].var.text, 'R1')
+        self.assertEqual(out[0][0][0].value.text, 'R2')
+
+        self.assertEqual(out[0][0][1].var.text, 'R2')
+        self.assertEqual(out[0][0][1].value.text, '[H]')
+
+        self.assertEqual(out[1][0][0].var.text, 'R1')
+        self.assertEqual(out[1][0][0].value.text, 'R2')
+
+        self.assertEqual(out[1][0][1].var.text, 'R2')
+        self.assertEqual(out[1][0][1].value.text, 'Ac')
+        print(out)
