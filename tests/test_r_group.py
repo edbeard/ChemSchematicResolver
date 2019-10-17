@@ -152,4 +152,3 @@ class TestRgroup(unittest.TestCase):
 
         self.assertEqual(out[1][0][1].var.text, 'R2')
         self.assertEqual(out[1][0][1].value.text, 'Ac')
-        print(out)

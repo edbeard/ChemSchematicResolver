@@ -6,7 +6,7 @@ Image Processing Actions
 A toolkit of image processing actions for segmentation.
 
 author: Ed Beard
-email: ejb207@cam.ac.uk
+email: ejb207@cam.ac.uk, ed.beard94@gmail.com
 
 """
 
@@ -246,7 +246,6 @@ def assign_label_to_diag(diag, labels, fig_bbox, rate=1):
         for label in labels:
             if probe_rect.overlaps(label):
                 found = True
-                print(diag.tag, label.tag)
                 diag.label = label
     return diag
 
@@ -271,7 +270,6 @@ def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=
             if diag.compass_position(label) != direction:
                 pass
             elif probe_rect.overlaps(label):
-                print(diag.tag, label.tag)
                 diag.label = label
                 return True
 

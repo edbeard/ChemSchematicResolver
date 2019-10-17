@@ -26,7 +26,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(img_dir, filename)
-        result = csr.extract.extract_diagram(path, debug=True)
+        result = csr.extract.extract_image(path, debug=True)
         self.assertEqual(gold, result)
 
         return result
@@ -38,7 +38,7 @@ class TestExtract(unittest.TestCase):
         test_imgs = os.listdir(test_path)
         for img_path in test_imgs:
             full_path = os.path.join(test_path, img_path)
-            csr.extract.extract_diagram(full_path, debug=True)
+            csr.extract.extract_image(full_path, debug=True)
 
     def test_run_train_imgs(self):
         """ Run all images in train_imgs directory"""
@@ -87,7 +87,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the small markush directory"""
 
         path = os.path.join(img_dir, filename)
-        result = csr.extract.extract_diagram(path, debug=True)
+        result = csr.extract.extract_image(path, debug=True)
         self.assertEqual(gold, result)
 
     def test_r_group_diag_1(self):
@@ -142,7 +142,7 @@ class TestExtract(unittest.TestCase):
         """ Extract images from the train_imgs directory"""
 
         path = os.path.join(img_dir, filename)
-        result = csr.extract.extract_diagram(path, debug=False)
+        result = csr.extract.extract_image(path, debug=False)
         self.assertEqual(gold, result)
 
     def test_train_imgs_1(self):

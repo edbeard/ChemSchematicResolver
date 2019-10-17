@@ -324,7 +324,7 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superato
         label_cands.append(tokens[0][2])
 
     # Run osra on temp image
-    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=True, debug=True, superatom_file=superatom_path, spelling_file=spelling_path)
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=False, debug=False, superatom_file=superatom_path, spelling_file=spelling_path)
 
     if not debug:
         io.imdel(img_name)
@@ -449,7 +449,7 @@ def separate_duplicate_r_groups(r_groups):
             try:
                 temp.append(vars_dict[var.text][i])
             except Exception as e:
-                log.error("An error occured while attempting to separate duplicate r-groups")
+                log.error("An error occurred while attempting to separate duplicate r-groups")
                 log.error(e)
         output.append(temp)
 

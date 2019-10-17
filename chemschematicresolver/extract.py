@@ -31,7 +31,6 @@ import math
 import cirpy
 
 from chemdataextractor import Document
-from chemdataextractor.text.normalize import chem_normalize
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
         results = []
         for path in fig_paths:
             try:
-                results.append(extract_diagram(path))
+                results.append(extract_image(path))
             except Exception:
                 pass
 
@@ -72,6 +71,27 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
         combined_results = substitute_labels(doc.records.serialize(), results)
 
         return combined_results
+
+
+def extract_documents(dirname, do_extract=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+    """ Automatically identifies and extracts chemical schematic diagrams from all files in a directory of documents.
+
+    :param dirname: Location of directory, with corpus to be extracted
+    :param do_extract : Boolean indicating whether images should be extracted
+    :param output: Directory to store extracted images
+
+    :return results: List of chemical record objects, enriched with chemical diagram information
+    """
+
+    if not os.path.isdir(dirname):
+        log.error('Path is not a directory! Terminating.')
+        print('Path is not a directory! Terminating.')
+
+    results = []
+    for file in os.listdir(dirname):
+        results.append(extract_document(os.path.join(dirname, file), do_extract, output))
+
+    return results
 
 
 def substitute_labels(records, results):
@@ -96,6 +116,7 @@ def substitute_labels(records, results):
             if record == doc_record:
                 record['diagram'] = {'smile': diag_smile, 'label': diag_label}
     return records
+
 
 def download_figs(figs, output):
     """ Downloads figures from url
@@ -154,8 +175,8 @@ def find_image_candidates(figs, filename):
     return csd_imgs
 
 
-def extract_diagram(filename, debug=False):
-    """ Converts a chemical diagram to SMILES string and extracted label candidates
+def extract_image(filename, debug=False):
+    """ Converts a Figure containing chemical schematic diagrams to SMILES strings and extracted label candidates
 
     :param filename: Input file name for extraction
     :param debug: Bool to indicate debugging
@@ -262,6 +283,26 @@ def extract_diagram(filename, debug=False):
         print(result)
 
     return output
+
+
+def extract_images(dirname, debug=False):
+    """ Extracts the chemical schematic diagrams from a directory of input images
+
+    :param dirname: Location of directory, with figures to be extracted
+    :param debug: Boolean specifying verbose debug mode.
+
+    :return results: List of chemical record objects, enriched with chemical diagram information
+    """
+
+    if not os.path.isdir(dirname):
+        log.error('Path is not a directory! Terminating.')
+        print('Path is not a directory! Terminating.')
+
+    results = []
+    for file in os.listdir(dirname):
+        results.append(extract_image(os.path.join(dirname, file), debug))
+
+    return results
 
 
 def get_smiles(diag, smiles, r_smiles, extension='jpg'):
