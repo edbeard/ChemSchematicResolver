@@ -312,7 +312,6 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superato
     for tokens in diag.label.r_group:
         token_dict = {}
         for token in tokens:
-
             token_dict[token[0].text] = token[1].text
 
         # Assigning var-var cases to true value if found (eg. R1=R2=H)
@@ -325,6 +324,9 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superato
 
     # Run osra on temp image
     smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=False, debug=False, superatom_file=superatom_path, spelling_file=spelling_path)
+
+    if not smiles:
+        log.warning('No SMILES strings were extracted for diagram %s' % diag.tag)
 
     if not debug:
         io.imdel(img_name)

@@ -171,6 +171,7 @@ class Panel(Rect):
     def pixel_ratio(self, pixel_ratio):
         self._pixel_ratio = pixel_ratio
 
+
 class Diagram(Panel):
     """ Chemical Schematic Diagram that is identified"""
 
@@ -208,13 +209,12 @@ class Diagram(Panel):
     def compass_position(self, other):
         """ Determines the compass position (NSEW) of other relative to self"""
 
-
         length = other.center[0] - self.center[0]
         height = other.center[1] - self.center[1]
 
         if abs(length) > abs(height):
             if length > 0:
-                return 'E'  # TODO : Change to enums
+                return 'E'
             else:
                 return 'W'
         elif abs(length) < abs(height):
@@ -225,7 +225,6 @@ class Diagram(Panel):
 
         else:
             return None
-
 
     def __repr__(self):
         if self.label is not None:

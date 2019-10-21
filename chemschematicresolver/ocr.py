@@ -68,6 +68,9 @@ def read_label(fig, label, whitelist=LABEL_WHITELIST):
     cropped_img = crop(img, label.left, label.right, label.top, label.bottom)
     padded_img = pad(cropped_img, size, mode='constant', constant_values=(1, 1))
     text = get_text(padded_img, x_offset=label.left, y_offset=label.top, psm=PSM.SINGLE_BLOCK, whitelist=whitelist)
+    if not text:
+        label.text = []
+        return label, 0
     raw_sentences = get_sentences(text)
 
     if len(raw_sentences) is not 0:
@@ -296,8 +299,6 @@ def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=Non
         # Convert image to PIL to load into tesseract (suppress precision loss warning)
         with warnings.catch_warnings(record=True) as ws:
             pil_img = io.img_as_pil(img)
-            # for w in ws:
-            #     log.debug(w.message)
         api.SetImage(pil_img)
         if whitelist is not None:
             api.SetVariable('tessedit_char_whitelist', whitelist)
@@ -362,7 +363,7 @@ def get_text(img, x_offset=0, y_offset=0, psm=PSM.AUTO, padding=0, whitelist=Non
                 word.symbols.append(symbol)
             except RuntimeError as e:
                 # Happens if no text was detected
-                log.warning(e)
+                log.info(e)
 
             if not it.Next(RIL.SYMBOL):
                 break

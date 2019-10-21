@@ -28,6 +28,8 @@ from skimage.color import gray2rgb
 import os
 import csv
 
+import warnings
+
 from .model import Figure
 
 log = logging.getLogger(__name__)
@@ -40,7 +42,8 @@ def imread(f, raw=False):
     :rtype: Figure
     """
 
-    img = skio.imread(f, plugin='pil')
+    with warnings.catch_warnings(record=True) as ws:
+        img = skio.imread(f, plugin='pil')
 
     # Transform all images pixel values to be floating point values between 0 and 1 (i.e. not ints 0-255)
     # Recommended in skimage-tutorials "Images are numpy arrays" because this what scikit-image uses internally
@@ -63,8 +66,9 @@ def imsave(f, img):
     :param string|file f: Filename or file-like object.
     :param numpy.ndarray img: Image to save. Of shape (M,N) or (M,N,3) or (M,N,4).
     """
-    # Ensure we use PIL so we can guarantee that imsave will accept file-like object as well as filename
-    skio.imsave(f, img, plugin='pil', quality=100)
+    with warnings.catch_warnings(record=True) as ws:
+        # Ensure we use PIL so we can guarantee that imsave will accept file-like object as well as filename
+        skio.imsave(f, img, plugin='pil', quality=100)
 
 
 def imdel(f):

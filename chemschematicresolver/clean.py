@@ -12,6 +12,7 @@ email: ejb207@cam.ac.uk
 
 import copy
 import numpy as np
+import warnings
 
 from .ocr import read_label, read_diag_text
 
@@ -32,7 +33,9 @@ def find_repeating_unit(labels, diags, fig):
     for diag in diags:
         for cand in labels:
             if diag.overlaps(cand):
-                repeating_units = [token for sentence in read_label(fig, cand)[0].text for token in sentence.tokens if 'n' is token.text]
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    repeating_units = [token for sentence in read_label(fig, cand)[0].text for token in sentence.tokens if 'n' is token.text]
                 if repeating_units:
                     ns.append(cand)
                     diag.repeating = True

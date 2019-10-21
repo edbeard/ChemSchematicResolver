@@ -24,7 +24,6 @@ import itertools
 import copy
 from scipy import ndimage as ndi
 from sklearn.cluster import KMeans
-# TODO : rename after removing cmd line read diagram logic
 import osra_rgroup
 
 from .model import Panel, Diagram, Label, Rect, Figure
@@ -121,7 +120,7 @@ def get_labels_and_diagrams_k_means_clustering(panels, fig, skel=True):
         else:
             group_2.append(panels[i])
 
-    if np.mean([panel.area for panel in group_1]) > np.mean([panel.area for panel in group_2]):
+    if np.nanmean([panel.area for panel in group_1]) > np.nanmean([panel.area for panel in group_2]):
         diags = group_1
         labels = group_2
     else:
@@ -321,6 +320,9 @@ def read_diagram_pyosra(diag, extension='jpg', debug=True):
 
     # Run osra on temp image
     smile = osra_rgroup.read_diagram(temp_img_fname)
+
+    if not smile:
+        log.warning('No SMILES string was extracted for diagram %s' % diag.tag)
 
     if not debug:
         imdel(temp_img_fname)

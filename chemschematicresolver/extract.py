@@ -28,23 +28,24 @@ import matplotlib.patches as mpatches
 import os
 import urllib
 import math
-import cirpy
 
 from chemdataextractor import Document
 
 log = logging.getLogger(__name__)
 
 
-def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
-    """ Extracts chemical records from a document and identifies chemcial schematic diagrams.
+def extract_document(filename, extract_all=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+    """ Extracts chemical records from a document and identifies chemical schematic diagrams.
     Then substitutes in if the label was found in a record
 
     :param filename: Location of document to be extracted
-    :param do_extract : Boolean indicating whether images should be extracted
+    :param extract_all : Boolean indicating whether to extract all results (even those without chemical diagrams)
     :param output: Directory to store extracted images
 
-    : return : Dictionary of chemical records
+    :return : Dictionary of chemical records
     """
+
+    log.info('Extracting from %s ...' % filename)
 
     # Extract the raw records from CDE
     doc = Document.from_file(filename)
@@ -55,41 +56,51 @@ def extract_document(filename, do_extract=True, output=os.path.join(os.path.dirn
 
     # Download figures locally
     fig_paths = download_figs(csds, output)
-    log.info("All relevant figures from %s downloaded sucessfully" % filename)
+    log.info("All relevant figures from %s downloaded successfully" % filename)
 
-    # Run CSD if necessary
-    if do_extract:
-        # Run CSR
-        results = []
-        for path in fig_paths:
-            try:
-                results.append(extract_image(path))
-            except Exception:
-                pass
+    # When diagrams are not found, return results without CSR extraction
+    if extract_all and not fig_paths:
+        log.info('No chemical diagrams detected. Returning chemical records.')
+        return doc.records.serialize()
+    elif not extract_all and not fig_paths:
+        log.info('No chemical diagrams detected. Returning empty list.')
+        return []
 
-        # Substitute smiles for labels
-        combined_results = substitute_labels(doc.records.serialize(), results)
+    log.info('Chemical diagram(s) detected. Running ChemSchematicResolver...')
+    # Run CSR
+    results = []
+    for path in fig_paths:
+        try:
+            results.append(extract_image(path))
+        except:
+            log.error('Could not extract image at %s' % path)
+            pass
 
-        return combined_results
+    # Substitute smiles for labels
+    combined_results = substitute_labels(doc.records.serialize(), results)
+    log.info('All diagram results extracted and combined with chemical records.')
+
+    return combined_results
 
 
-def extract_documents(dirname, do_extract=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+def extract_documents(dirname, extract_all=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
     """ Automatically identifies and extracts chemical schematic diagrams from all files in a directory of documents.
 
     :param dirname: Location of directory, with corpus to be extracted
-    :param do_extract : Boolean indicating whether images should be extracted
+    :param extract_all : Boolean indicating whether to extract all results (even those without chemical diagrams)
     :param output: Directory to store extracted images
 
     :return results: List of chemical record objects, enriched with chemical diagram information
     """
 
+    log.info('Extracting all documents at %s ...' % dirname)
     if not os.path.isdir(dirname):
         log.error('Path is not a directory! Terminating.')
-        print('Path is not a directory! Terminating.')
+        return []
 
     results = []
     for file in os.listdir(dirname):
-        results.append(extract_document(os.path.join(dirname, file), do_extract, output))
+        results.append(extract_document(os.path.join(dirname, file), extract_all, output))
 
     return results
 
@@ -253,6 +264,9 @@ def extract_image(filename, debug=False):
         # Read the label
         diag.label, conf = read_label(fig, label)
 
+        if not diag.label.text:
+            log.warning('Text could not be resolved from label %s' % label.tag)
+
         # Only extract images where the confidence is sufficiently high
         if not math.isnan(conf) and conf > confidence_threshold:
 
@@ -263,8 +277,7 @@ def extract_image(filename, debug=False):
             smiles, r_smiles = get_smiles(diag, smiles, r_smiles, extension)
 
         else:
-            log.warning('Confidence in label deemed too low for accurate extraction')
-            print('Confidence in label deemed too low for accurate extraction...')
+            log.warning('Confidence of label %s deemed too low for extraction' % diag.label.tag)
 
     log.info("The results are :")
     log.info('R-smiles %s' % r_smiles)
@@ -277,10 +290,12 @@ def extract_image(filename, debug=False):
 
     # Removing false positives from lack of labels or wildcard smiles
     output = [smile for smile in total_smiles if is_false_positive(smile) is False]
+    if len(total_smiles) != len(output):
+        log.warning('Some SMILES strings were determined to be false positives and were removed from the output.')
+
     log.info('Final Results : ')
     for result in output:
         log.info(result)
-        print(result)
 
     return output
 
@@ -294,13 +309,17 @@ def extract_images(dirname, debug=False):
     :return results: List of chemical record objects, enriched with chemical diagram information
     """
 
+    log.info('Extracting all images at %s ...' % dirname)
+
     if not os.path.isdir(dirname):
         log.error('Path is not a directory! Terminating.')
-        print('Path is not a directory! Terminating.')
+        return []
 
     results = []
     for file in os.listdir(dirname):
         results.append(extract_image(os.path.join(dirname, file), debug))
+    log.info('Results extracted sucessfully:')
+    log.info(results)
 
     return results
 
