@@ -288,7 +288,7 @@ def filter_repeated_labels(r_groups):
     return output_r_groups
 
 
-def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superatom_file, spelling_path=spelling_file):
+def get_rgroup_smiles(diag, extension='jpg', debug=False, superatom_path=superatom_file, spelling_path=spelling_file):
     """ Extract SMILES from a chemical diagram (powered by pyosra)
 
     :param diag: Input Diagram
@@ -323,7 +323,7 @@ def get_rgroup_smiles(diag, extension='jpg', debug=True, superatom_path=superato
         label_cands.append(tokens[0][2])
 
     # Run osra on temp image
-    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=False, debug=False, superatom_file=superatom_path, spelling_file=spelling_path)
+    smiles = osra_rgroup.read_rgroup(osra_input, input_file=img_name, verbose=False, debug=debug, superatom_file=superatom_path, spelling_file=spelling_path)
 
     if not smiles:
         log.warning('No SMILES strings were extracted for diagram %s' % diag.tag)

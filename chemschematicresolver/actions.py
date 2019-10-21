@@ -300,7 +300,7 @@ def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=
     return diag
 
 
-def read_diagram_pyosra(diag, extension='jpg', debug=True):
+def read_diagram_pyosra(diag, extension='jpg', debug=False):
     """ Converts a diagram to SMILES using pyosra
 
     :param diag: Diagram to be extracted
