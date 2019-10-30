@@ -28,6 +28,7 @@ from .ocr import ASSIGNMENT, SEPERATORS, CONCENTRATION
 
 import re
 from skimage.util import pad
+from urllib.error import URLError
 
 from chemdataextractor.doc.text import Token
 
@@ -357,8 +358,12 @@ def clean_chars(value, cleanchars):
 def resolve_structure(compound):
     """ Resolves a compound structure using CIRPY """
 
-    smiles = cirpy.resolve(compound, 'smiles')
-    return smiles
+    try:
+        smiles = cirpy.resolve(compound, 'smiles')
+        return smiles
+    except URLError:
+        log.warning('Cannot connect to Chemical Identify Resolver - chemical names may not be resolved.')
+        return compound
 
 
 def convert_r_groups_to_tuples(r_groups):

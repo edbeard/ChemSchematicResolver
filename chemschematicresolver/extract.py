@@ -28,6 +28,7 @@ import matplotlib.patches as mpatches
 import os
 import urllib
 import math
+import tarfile, zipfile
 
 from chemdataextractor import Document
 
@@ -39,10 +40,10 @@ def extract_document(filename, extract_all=True, output=os.path.join(os.path.dir
     Then substitutes in if the label was found in a record
 
     :param filename: Location of document to be extracted
-    :param extract_all : Boolean indicating whether to extract all results (even those without chemical diagrams)
+    :param extract_all : Boolean to determine whether output is combined with chemical records
     :param output: Directory to store extracted images
 
-    :return : Dictionary of chemical records
+    :return : Dictionary of chemical records with diagram SMILES strings, or List of label candidates and smiles
     """
 
     log.info('Extracting from %s ...' % filename)
@@ -76,8 +77,13 @@ def extract_document(filename, extract_all=True, output=os.path.join(os.path.dir
             log.error('Could not extract image at %s' % path)
             pass
 
+    if not extract_all:
+        return results
+
+    records = doc.records.serialize()
+
     # Substitute smiles for labels
-    combined_results = substitute_labels(doc.records.serialize(), results)
+    combined_results = substitute_labels(records, results)
     log.info('All diagram results extracted and combined with chemical records.')
 
     return combined_results
@@ -94,19 +100,66 @@ def extract_documents(dirname, extract_all=True, output=os.path.join(os.path.dir
     """
 
     log.info('Extracting all documents at %s ...' % dirname)
-    if not os.path.isdir(dirname):
-        log.error('Path is not a directory! Terminating.')
-        return []
 
     results = []
-    for file in os.listdir(dirname):
-        results.append(extract_document(os.path.join(dirname, file), extract_all, output))
+
+    if os.path.isdir(dirname):
+        # Extract from all files in directory
+        for file in os.listdir(dirname):
+            results.append(extract_document(os.path.join(dirname, file), extract_all, output))
+
+    elif os.path.isfile(dirname):
+
+        # Unzipping compressed inputs
+        if dirname.endswith('zip'):
+            # Logic to unzip the file locally
+            log.info('Opening zip file...')
+            zip_ref = zipfile.ZipFile(dirname)
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            zip_ref.extractall(extracted_path)
+            zip_ref.close()
+
+        elif dirname.endswith('tar.gz'):
+            # Logic to unzip tarball locally
+            log.info('Opening tarball file...')
+            tar_ref = tarfile.open(dirname, 'r:gz')
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            tar_ref.extractall(extracted_path)
+            tar_ref.close()
+
+        elif dirname.endswith('tar'):
+            # Logic to unzip tarball locally
+            log.info('Opening tarball file...')
+            tar_ref = tarfile.open(dirname, 'r:')
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            tar_ref.extractall(extracted_path)
+            tar_ref.close()
+        else:
+            # Logic for wrong file type
+            log.error('Input not a directory')
+            raise NotADirectoryError
+
+        docs = [os.path.join(extracted_path, doc) for doc in os.listdir(extracted_path)]
+        for file in docs:
+            results.append(extract_document(file, extract_all, output))
 
     return results
 
 
 def substitute_labels(records, results):
-    """ Looks for label candidates in the document records and substitutes where appropriate"""
+    """ Looks for label candidates in the document records and substitutes where appropriate
+
+    :param records: Serialized chemical records from chemdataextractor
+    :param results: Results extracted from the diagram
+
+    :returns: List of chemical records enriched with chemical diagram SMILES string
+    """
 
     docs_labelled_records = []
 
@@ -116,7 +169,7 @@ def substitute_labels(records, results):
     for diag_result in results:
         for label_cands, smile in diag_result:
             for record_label in record_labels:
-                overlap = [(record_label, label_cand, smile)  for label_cand in label_cands if label_cand in record_label['labels']]
+                overlap = [(record_label, label_cand, smile) for label_cand in label_cands if label_cand in record_label['labels']]
                 docs_labelled_records += overlap
 
     log.debug(docs_labelled_records)
@@ -125,7 +178,8 @@ def substitute_labels(records, results):
     for doc_record, diag_label, diag_smile in docs_labelled_records:
         for record in records:
             if record == doc_record:
-                record['diagram'] = {'smile': diag_smile, 'label': diag_label}
+                record['diagram'] = {'smiles': diag_smile, 'label': diag_label}
+
     return records
 
 
@@ -279,7 +333,7 @@ def extract_image(filename, debug=False):
         else:
             log.warning('Confidence of label %s deemed too low for extraction' % diag.label.tag)
 
-    log.info("The results are :")
+    log.info('The results are :')
     log.info('R-smiles %s' % r_smiles)
     log.info('Smiles %s' % smiles)
     if debug is True:
@@ -311,13 +365,54 @@ def extract_images(dirname, debug=False):
 
     log.info('Extracting all images at %s ...' % dirname)
 
-    if not os.path.isdir(dirname):
-        log.error('Path is not a directory! Terminating.')
-        return []
-
     results = []
-    for file in os.listdir(dirname):
-        results.append(extract_image(os.path.join(dirname, file), debug))
+
+    if os.path.isdir(dirname):
+        # Extract from all files in directory
+        for file in os.listdir(dirname):
+            results.append(extract_image(os.path.join(dirname, file), debug))
+
+    elif os.path.isfile(dirname):
+
+        # Unzipping compressed inputs
+        if dirname.endswith('zip'):
+            # Logic to unzip the file locally
+            log.info('Opening zip file...')
+            zip_ref = zipfile.ZipFile(dirname)
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            zip_ref.extractall(extracted_path)
+            zip_ref.close()
+
+        elif dirname.endswith('tar.gz'):
+            # Logic to unzip tarball locally
+            log.info('Opening tarball file...')
+            tar_ref = tarfile.open(dirname, 'r:gz')
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            tar_ref.extractall(extracted_path)
+            tar_ref.close()
+
+        elif dirname.endswith('tar'):
+            # Logic to unzip tarball locally
+            log.info('Opening tarball file...')
+            tar_ref = tarfile.open(dirname, 'r:')
+            extracted_path = os.path.join(os.path.dirname(dirname), 'extracted')
+            if not os.path.exists(extracted_path):
+                os.makedirs(extracted_path)
+            tar_ref.extractall(extracted_path)
+            tar_ref.close()
+        else:
+            # Logic for wrong file type
+            log.error('Input not a directory')
+            raise NotADirectoryError
+
+        imgs = [os.path.join(extracted_path, doc) for doc in os.listdir(extracted_path)]
+        for file in imgs:
+            results.append(extract_image(file, debug))
+
     log.info('Results extracted sucessfully:')
     log.info(results)
 
