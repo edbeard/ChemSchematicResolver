@@ -16,7 +16,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 
-def is_false_positive(label_smile_tuple):
+def is_false_positive(label_smile_tuple, allow_wildcards=False):
     """ Identifies failures from absence of labels and incomplete / invalid smiles
 
     :rtype bool
@@ -29,7 +29,7 @@ def is_false_positive(label_smile_tuple):
         return True
 
     # Remove results containing the wildcard character in the SMILE
-    if '*' in smile:
+    if '*' in smile and not allow_wildcards:
         return True
 
     # Remove results where no SMILE was returned

@@ -35,12 +35,13 @@ from chemdataextractor import Document
 log = logging.getLogger(__name__)
 
 
-def extract_document(filename, extract_all=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+def extract_document(filename, extract_all=True, allow_wildcards=False, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
     """ Extracts chemical records from a document and identifies chemical schematic diagrams.
     Then substitutes in if the label was found in a record
 
     :param filename: Location of document to be extracted
     :param extract_all : Boolean to determine whether output is combined with chemical records
+    :param allow_wildcards: Bool to indicate whether results containing wildcards are permitted
     :param output: Directory to store extracted images
 
     :return : Dictionary of chemical records with diagram SMILES strings, or List of label candidates and smiles
@@ -72,7 +73,7 @@ def extract_document(filename, extract_all=True, output=os.path.join(os.path.dir
     results = []
     for path in fig_paths:
         try:
-            results.append(extract_image(path))
+            results.append(extract_image(path, allow_wildcards=allow_wildcards))
         except:
             log.error('Could not extract image at %s' % path)
             pass
@@ -89,11 +90,12 @@ def extract_document(filename, extract_all=True, output=os.path.join(os.path.dir
     return combined_results
 
 
-def extract_documents(dirname, extract_all=True, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
+def extract_documents(dirname, extract_all=True, allow_wildcards=False, output=os.path.join(os.path.dirname(os.getcwd()), 'csd')):
     """ Automatically identifies and extracts chemical schematic diagrams from all files in a directory of documents.
 
     :param dirname: Location of directory, with corpus to be extracted
     :param extract_all : Boolean indicating whether to extract all results (even those without chemical diagrams)
+    :param allow_wildcards: Bool to indicate whether results containing wildcards are permitted
     :param output: Directory to store extracted images
 
     :return results: List of chemical record objects, enriched with chemical diagram information
@@ -106,7 +108,7 @@ def extract_documents(dirname, extract_all=True, output=os.path.join(os.path.dir
     if os.path.isdir(dirname):
         # Extract from all files in directory
         for file in os.listdir(dirname):
-            results.append(extract_document(os.path.join(dirname, file), extract_all, output))
+            results.append(extract_document(os.path.join(dirname, file), extract_all, allow_wildcards, output))
 
     elif os.path.isfile(dirname):
 
@@ -147,7 +149,7 @@ def extract_documents(dirname, extract_all=True, output=os.path.join(os.path.dir
 
         docs = [os.path.join(extracted_path, doc) for doc in os.listdir(extracted_path)]
         for file in docs:
-            results.append(extract_document(file, extract_all, output))
+            results.append(extract_document(file, extract_all, allow_wildcards, output))
 
     return results
 
@@ -240,11 +242,12 @@ def find_image_candidates(figs, filename):
     return csd_imgs
 
 
-def extract_image(filename, debug=False):
+def extract_image(filename, debug=False, allow_wildcards=False):
     """ Converts a Figure containing chemical schematic diagrams to SMILES strings and extracted label candidates
 
     :param filename: Input file name for extraction
     :param debug: Bool to indicate debugging
+    :param allow_wildcards: Bool to indicate whether results containing wildcards are permitted
 
     :return : List of label candidates and smiles
     :rtype : list[tuple[list[string],string]]
@@ -343,7 +346,7 @@ def extract_image(filename, debug=False):
     total_smiles = smiles + r_smiles
 
     # Removing false positives from lack of labels or wildcard smiles
-    output = [smile for smile in total_smiles if is_false_positive(smile) is False]
+    output = [smile for smile in total_smiles if is_false_positive(smile, allow_wildcards=allow_wildcards) is False]
     if len(total_smiles) != len(output):
         log.warning('Some SMILES strings were determined to be false positives and were removed from the output.')
 
@@ -354,11 +357,12 @@ def extract_image(filename, debug=False):
     return output
 
 
-def extract_images(dirname, debug=False):
+def extract_images(dirname, debug=False, allow_wildcards=False):
     """ Extracts the chemical schematic diagrams from a directory of input images
 
     :param dirname: Location of directory, with figures to be extracted
     :param debug: Boolean specifying verbose debug mode.
+    :param allow_wildcards: Bool to indicate whether results containing wildcards are permitted
 
     :return results: List of chemical record objects, enriched with chemical diagram information
     """
@@ -370,7 +374,7 @@ def extract_images(dirname, debug=False):
     if os.path.isdir(dirname):
         # Extract from all files in directory
         for file in os.listdir(dirname):
-            results.append(extract_image(os.path.join(dirname, file), debug))
+            results.append(extract_image(os.path.join(dirname, file), debug, allow_wildcards))
 
     elif os.path.isfile(dirname):
 
@@ -411,7 +415,7 @@ def extract_images(dirname, debug=False):
 
         imgs = [os.path.join(extracted_path, doc) for doc in os.listdir(extracted_path)]
         for file in imgs:
-            results.append(extract_image(file, debug))
+            results.append(extract_image(file, debug, allow_wildcards))
 
     log.info('Results extracted sucessfully:')
     log.info(results)
