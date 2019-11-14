@@ -91,6 +91,7 @@ def binary_close(fig, size=20):
 
 def binary_floodfill(fig):
     """ Converts all pixels inside closed contour to 1"""
+    log.debug('Binary floodfill initiated...')
     fig.img = ndi.binary_fill_holes(fig.img)
     return fig
 
@@ -113,8 +114,7 @@ def skeletonize(fig):
     :return: Figure : binarized figure
     """
 
-    skel_fig = copy.deepcopy(fig)
-    skel_fig = binarize(skel_fig)
+    skel_fig = binarize(fig)
     skel_fig.img = skeletonize_skimage(skel_fig.img)
 
     return skel_fig

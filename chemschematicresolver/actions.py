@@ -17,6 +17,7 @@ from __future__ import unicode_literals
 import logging
 
 import numpy as np
+import os
 from skimage.util import pad
 from skimage.measure import regionprops
 
@@ -30,6 +31,11 @@ from .model import Panel, Diagram, Label, Rect, Figure
 from .io import imsave, imdel
 from .clean import find_repeating_unit, clean_output
 from .utils import crop, skeletonize, binarize, binary_close, binary_floodfill, merge_rect, merge_overlap
+
+# Standard path to superatom dictionary file
+parent_dir = os.path.dirname(os.path.abspath(__file__))
+superatom_file = os.path.join(parent_dir, 'dict', 'superatom.txt')
+spelling_file = os.path.join(parent_dir, 'dict', 'spelling.txt')
 
 
 log = logging.getLogger(__name__)
@@ -300,7 +306,7 @@ def assign_label_to_diag_postprocessing(diag, labels, direction, fig_bbox, rate=
     return diag
 
 
-def read_diagram_pyosra(diag, extension='jpg', debug=False):
+def read_diagram_pyosra(diag, extension='jpg', debug=False, superatom_path=superatom_file, spelling_path=spelling_file):
     """ Converts a diagram to SMILES using pyosra
 
     :param diag: Diagram to be extracted
@@ -319,7 +325,7 @@ def read_diagram_pyosra(diag, extension='jpg', debug=False):
     imsave(temp_img_fname, padded_img)
 
     # Run osra on temp image
-    smile = osra_rgroup.read_diagram(temp_img_fname)
+    smile = osra_rgroup.read_diagram(temp_img_fname, debug=debug, superatom_file=superatom_path, spelling_file=spelling_path)
 
     if not smile:
         log.warning('No SMILES string was extracted for diagram %s' % diag.tag)

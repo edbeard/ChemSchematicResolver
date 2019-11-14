@@ -22,7 +22,6 @@ from .ocr import read_label
 from .r_group import detect_r_group, get_rgroup_smiles
 from .validate import is_false_positive
 
-import copy
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 import os
@@ -266,11 +265,8 @@ def extract_image(filename, debug=False, allow_wildcards=False):
     fig = imread(filename)
     fig_bbox = fig.get_bounding_box()
 
-    # Create unreferenced binary copy
-    bin_fig = copy.deepcopy(fig)
-
     # Segment image into pixel islands
-    panels = segment(bin_fig)
+    panels = segment(fig)
 
     # Initial classify of images, to account for merging in segmentation
     labels, diags = classify_kmeans(panels, fig)
