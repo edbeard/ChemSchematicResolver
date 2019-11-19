@@ -181,3 +181,6 @@ CC CC
 C1NC=CO1 C1NC=CO1
 C C
 [Ac] [Ac]
+CI Cl
+F F
+Br Br

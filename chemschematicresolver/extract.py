@@ -435,14 +435,14 @@ def get_smiles(diag, smiles, r_smiles, extension='jpg'):
     if len(diag.label.r_group) > 0:
         r_smiles_group = get_rgroup_smiles(diag, extension)
         for smile in r_smiles_group:
-            label_cand_str = [cand.text for cand in smile[0]]
+            label_cand_str = list(set([cand.text for cand in smile[0]]))
             r_smiles.append((label_cand_str, smile[1]))
 
     # Resolve diagram normally if no R-groups - should just be one smile
     else:
         smile = read_diagram_pyosra(diag, extension)
         label_raw = diag.label.text
-        label_cand_str = [clean_output(cand.text) for cand in label_raw]
+        label_cand_str = list(set([clean_output(cand.text) for cand in label_raw]))
 
         smiles.append((label_cand_str, smile))
 
