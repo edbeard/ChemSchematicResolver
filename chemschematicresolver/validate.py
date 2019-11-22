@@ -38,3 +38,14 @@ def is_false_positive(label_smile_tuple, allow_wildcards=False):
 
     return False
 
+
+def remove_repeating(diags):
+    """ Removes any diagrams containing a repeating element
+
+    :param diags: List of labelled diagrams
+    :returns: diags: List of labelled diagtrams, where those with repeating structures are removed...
+    """
+
+    diags = [diag for diag in diags if not diag.repeating]
+    return diags
+

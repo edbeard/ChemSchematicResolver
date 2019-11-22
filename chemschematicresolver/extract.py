@@ -20,7 +20,7 @@ from .actions import segment, classify_kmeans, preprocessing, label_diags, read_
 from .clean import clean_output
 from .ocr import read_label
 from .r_group import detect_r_group, get_rgroup_smiles
-from .validate import is_false_positive
+from .validate import is_false_positive, remove_repeating
 
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
@@ -293,6 +293,7 @@ def extract_image(filename, debug=False, allow_wildcards=False):
 
     # Add label information to the appropriate diagram by expanding bounding box
     labelled_diags = label_diags(labels, diags, fig_bbox)
+    labelled_diags = remove_repeating(labelled_diags)
 
     for diag in labelled_diags:
 

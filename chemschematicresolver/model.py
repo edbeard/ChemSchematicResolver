@@ -267,7 +267,6 @@ class Label(Panel):
         """
         return self.r_group
 
-
     def add_r_group_variables(self, var_value_label_tuples):
         """ Updates the R-groups for this label."""
 
@@ -296,7 +295,6 @@ class RGroup(object):
         """ Converts the r-group object to a usable a list of variable-value pairs and their list of candidate labels """
         tuple_r_group = (self.var, self.value, self.label_candidates)
         return tuple_r_group
-
 
 
 @decorators.python_2_unicode_compatible
