@@ -12,7 +12,7 @@
 
 ## Installation
 
-Installation of ChemSchematicResolver is achieved through anaconda.
+Installation of ChemSchematicResolver is achieved using [conda](https://docs.conda.io/en/latest).
 
 First, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html), which contains a complete Python distribution alongside the conda package manager.
 
@@ -24,18 +24,20 @@ Once this is created, enter this environment with the command
 
     conda activate <my_env>
     
-There are two ways to complete the installation, via the anaconda cloud, and from source. 
+There are two ways to continue the installation - via the anaconda cloud, and from source. 
 
 ### Option 1 - Installation via anaconda
 
-We recommend the installation of ChemSchematicResolver through the [anaconda cloud](https://docs.conda.io/en/latest).
+*Please note that the following option will not work until release.*
+
+We recommend the installation of ChemSchematicResolver through the anaconda cloud.
 
 Simply type:
 
     conda install -c edbeard chemschematicresolver
     
 This command installs ChemSchematicResolver and all it's dependencies from the author's channel.
-This includes [pyosra](https://github.com/edbeard/pyosra), the Python wrapper for the OSRA toolkit, and [ChemDataExtracor-CSR](https://github.com/edbeard/chemdataextractor-csr), the bespoke version of ChemDataExtractor containing diagram parsers.
+This includes [pyosra](https://github.com/edbeard/pyosra), the Python wrapper for the OSRA toolkit, and [ChemDataExtractor-CSR](https://github.com/edbeard/chemdataextractor-csr), the bespoke version of ChemDataExtractor containing diagram parsers.
 
 *This method of installation is currently supported on linux machines only*
 
