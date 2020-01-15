@@ -12,13 +12,9 @@
 
 ## Installation
 
-### Option 1 - Installation via Conda
+Installation of ChemSchematicResolver is achieved through anaconda.
 
-**NOTE: this installation method will only work upon release, when the conda package is uploaded to anaconda cloud**
-
-We recommend the installation of ChemSchematicResolver through [conda](https://docs.conda.io/en/latest).
-
- First, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html), which contains a complete Python distribution alongside the conda package manager.
+First, install [Miniconda](https://docs.conda.io/en/latest/miniconda.html), which contains a complete Python distribution alongside the conda package manager.
 
 Next, go to the command line terminal and create a working environment by typing
 
@@ -27,8 +23,14 @@ Next, go to the command line terminal and create a working environment by typing
 Once this is created, enter this environment with the command
 
     conda activate <my_env>
+    
+There are two ways to complete the installation, via the anaconda cloud, and from source. 
 
-and install ChemSchematicResolver by typing
+### Option 1 - Installation via anaconda
+
+We recommend the installation of ChemSchematicResolver through the [anaconda cloud](https://docs.conda.io/en/latest).
+
+Simply type:
 
     conda install -c edbeard chemschematicresolver
     
@@ -37,17 +39,15 @@ This includes [pyosra](https://github.com/edbeard/pyosra), the Python wrapper fo
 
 *This method of installation is currently supported on linux machines only*
 
-**NOTE: this installation method will only work upon release, when the conda package is uploaded to anaconda cloud**
-
 ### Option 2 - Installation from source
 
-We strongly recommend installation via conda whenever possible as all the dependencies are automatically handled.
+*Please note that all following links will not work until release.*
+
+We strongly recommend installation via the conda cloud whenever possible, as all the dependencies are automatically handled.
  
 If this cannot be done, users are invited to compile the code from source. This is easiest to do through [conda build](https://docs.conda.io/projects/conda-build/en/latest/), by building and installing using the recipes [here](www.github.com/edbeard/conda-recipes). 
 
-*This requires the user to set up a conda environment as described previously.*
-
-Specifically, the required dependencies are:
+The following packages will need to be built from a recipe, in the order below:
 
 1. **Pyosra**: [[recipe](https://github.com/edbeard/conda-recipes/recipe/pyosra), [source code](https://github.com/edbeard/pyosra)]
 
@@ -55,11 +55,11 @@ Specifically, the required dependencies are:
 
 3. **ChemSchematicResolver**: [[recipe](https://github.com/edbeard/conda-recipes/recipe/ChemSchematicResolver), [source code](https://github.com/edbeard/ChemSchematicResolver)]
 
-For local builds, clone each recipe and adjust the `source: path` variable in `<path/to/recipe/meta.yaml>` to the directory containing the source code. Then run 
+For each, enter the directory and run:
 
     conda build .
     
-to create a compressed tarball file, which contains the instructions for installing the code *(Please not that this can take up to 30 minutes to build)*.
+to create a compressed tarball file, which contains the instructions for installing the code *(Please note that this can take up to 30 minutes to build)*.
  
 Move all compressed tarballs to a single directory, enter the directory and run:
 
@@ -70,8 +70,6 @@ This changes the directory to a format emulating a conda channel. To install all
     conda install -c <path/to/tarballs> chemschematicresolver
     
 And you should have everything installed!
-
-*NOTE: Before release all URLS (github source and recipes) will not work - all code must be obtained from the author)*
 
 
 # Getting Started
