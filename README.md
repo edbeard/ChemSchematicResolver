@@ -34,7 +34,7 @@ We recommend the installation of ChemSchematicResolver through the anaconda clou
 
 Simply type:
 
-    conda install -c edbeard chemschematicresolver
+    conda install -c edbeard -c mcs07 -c conda-forge chemschematicresolver
     
 This command installs ChemSchematicResolver and all it's dependencies from the author's channel.
 This includes [pyosra](https://github.com/edbeard/pyosra), the Python wrapper for the OSRA toolkit, and [ChemDataExtractor-CSR](https://github.com/edbeard/chemdataextractor-csr), the bespoke version of ChemDataExtractor containing diagram parsers.
