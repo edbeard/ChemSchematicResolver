@@ -1,5 +1,5 @@
 # ChemSchematicResolver
-**ChemSchematicResolver** is a toolkit for the automatic resolution of chemical schematic diagrams and their labels.
+**ChemSchematicResolver** is a toolkit for the automatic resolution of chemical schematic diagrams and their labels. You can find out how it works on the [website](http://www.chemschematicresolver.org) , and try out the online demo [here](http://www.chemschematicresolver.org/demo)
 
 ## Features
 
@@ -47,15 +47,15 @@ This includes [pyosra](https://github.com/edbeard/pyosra), the Python wrapper fo
 
 We strongly recommend installation via the conda cloud whenever possible, as all the dependencies are automatically handled.
  
-If this cannot be done, users are invited to compile the code from source. This is easiest to do through [conda build](https://docs.conda.io/projects/conda-build/en/latest/), by building and installing using the recipes [here](www.github.com/edbeard/conda-recipes). 
+If this cannot be done, users are invited to compile the code from source. This is easiest to do through [conda build](https://docs.conda.io/projects/conda-build/en/latest/), by building and installing using the recipes [here](https://github.com/edbeard/conda_recipes). 
 
 The following packages will need to be built from a recipe, in the order below:
 
-1. **Pyosra**: [[recipe](https://github.com/edbeard/conda-recipes/recipe/pyosra), [source code](https://github.com/edbeard/pyosra)]
+1. **Pyosra**: [[recipe](https://github.com/edbeard/conda_recipes/tree/master/pyosra), [source code](https://github.com/edbeard/pyosra)]
 
-2. **ChemDataExtracor-CSR**: [[recipe](https://github.com/edbeard/conda-recipes/recipe/ChemDataExtrator-CSR), [source code](https://github.com/edbeard/chemdataextractor-csr)]
+2. **ChemDataExtracor-CSR**: [[recipe](https://github.com/edbeard/conda_recipes/tree/master/cde-csr/recipes/chemdataextractor), [source code](https://github.com/edbeard/chemdataextractor-csr)]
 
-3. **ChemSchematicResolver**: [[recipe](https://github.com/edbeard/conda-recipes/recipe/ChemSchematicResolver), [source code](https://github.com/edbeard/ChemSchematicResolver)]
+3. **ChemSchematicResolver**: [[recipe](https://github.com/edbeard/conda_recipes/tree/master/csr), [source code](https://github.com/edbeard/ChemSchematicResolver)]
 
 For each, enter the directory and run:
 
@@ -107,7 +107,7 @@ If the user has permissions to access the full article, this function will downl
 
 The tool currently supports HTML documents from the [Royal Society of Chemistry](https://www.rsc.org/) and [Springer](https://www.springer.com), as well as XML files obtained using the [Elsevier Developers Portal](https://dev.elsevier.com/index.html) .
 
-ChemSchematicResolver will return the complete chemical records from the document extracted with [ChemDataExtractor](www.chemdataextractor.org), enriched with extracted structure and raw label. For example:
+ChemSchematicResolver will return the complete chemical records from the document extracted with [ChemDataExtractor](http://chemdataextractor.org/), enriched with extracted structure and raw label. For example:
 
     >>> print(result)
     {'labels': ['1a'], 'roles': ['compound'], 'melting_points': [{'value': '5', 'units': '°C'}], 'diagram': { 'smiles': 'C1CCCCC1', 'label': '1a' } }
